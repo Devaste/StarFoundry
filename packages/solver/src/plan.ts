@@ -2,10 +2,11 @@
  * Production plan from targets (SPEC §5.1, fixed config): candidate recipes reachable from the targets,
  * the balance LP over them, and the solved line with machine counts and power.
  *
- * Until the mechanics port lands, every recipe runs at its own tier with no overclock or parallels:
- * one machine does one operation per `durationTicks`, drawing the recipe's EU/t.
+ * Each recipe runs on its default machine at the plan's max tier with the pack's overclock (effective.ts):
+ * one machine does one run per overclocked duration, drawing the overclocked EU/t.
  */
 import { GoodKind, type GameData, type Recipe } from '@starfoundry/data';
+import { effectiveRecipe, type EffectiveRecipe } from './effective.js';
 import type { LpRecipe, ProductionProblem, ProductionSolution } from './index.js';
 
 export interface PlanSettings {
@@ -58,13 +59,10 @@ export function allowedRecipe(r: Recipe, settings: PlanSettings): boolean {
   return r.tier <= settings.maxTier && r.eut >= 0 && r.outputs.length > 0;
 }
 
-/** Expected output per operation at the recipe's own tier (no boost yet). */
-const expected = (amount: number, chance: number) => amount * Math.min(1, chance);
-
-/** Recipes reachable backwards from the targets through allowed producers. */
-export function candidateRecipes(data: GameData, request: PlanRequest): Recipe[] {
+/** Recipes reachable backwards from the targets through allowed producers, as their default machine runs them. */
+export function candidateRecipes(data: GameData, request: PlanRequest): EffectiveRecipe[] {
   const seen = new Set<number>(request.settings.raw);
-  const picked = new Set<number>();
+  const picked = new Map<number, EffectiveRecipe>();
   const queue = Object.keys(request.targets).map(Number);
   while (queue.length) {
     const good = queue.pop()!;
@@ -78,11 +76,13 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Recipe[]
     for (const r of data.producers[good]!) {
       const recipe = data.recipes[r]!;
       if (picked.has(r) || !allowedRecipe(recipe, request.settings)) continue;
-      picked.add(r);
+      const effective = effectiveRecipe(data, recipe, request.settings.maxTier);
+      if (!effective) continue;
+      picked.set(r, effective);
       for (const s of recipe.inputs) queue.push(s.good);
     }
   }
-  return [...picked].map((r) => data.recipes[r]!);
+  return [...picked.values()];
 }
 
 /** Why a good may be imported: marked raw, nothing allowed makes it, or as a costly last resort. */
@@ -90,6 +90,8 @@ export type ImportKind = 'raw' | 'source' | 'producible';
 
 export interface PlanProblem extends ProductionProblem {
   importKind: Record<string, ImportKind>;
+  /** recipe id -> machine config and per-run flows behind its LP column (not needed by the solver itself) */
+  effective: Map<string, EffectiveRecipe>;
 }
 
 export function buildProblem(data: GameData, request: PlanRequest): PlanProblem {
@@ -102,21 +104,23 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
   const key = (good: number) => String(good);
   const recipes: LpRecipe[] = [];
   const goods = new Set<number>(Object.keys(request.targets).map(Number));
+  const effective = new Map<string, EffectiveRecipe>();
 
-  for (const r of candidateRecipes(data, request)) {
+  for (const e of candidateRecipes(data, request)) {
+    effective.set(e.recipe.id, e);
     const inputs: Record<string, number> = {};
     const outputs: Record<string, number> = {};
-    for (const s of r.inputs) {
-      inputs[key(s.good)] = (inputs[key(s.good)] ?? 0) + expected(s.amount, s.chance);
+    for (const s of e.inputs) {
+      inputs[key(s.good)] = (inputs[key(s.good)] ?? 0) + s.amount;
       goods.add(s.good);
     }
-    for (const s of r.outputs) {
-      outputs[key(s.good)] = (outputs[key(s.good)] ?? 0) + expected(s.amount, s.chance);
+    for (const s of e.outputs) {
+      outputs[key(s.good)] = (outputs[key(s.good)] ?? 0) + s.amount;
       goods.add(s.good);
     }
-    // cost per operation: its share of the line's EU/t and machine count
-    const seconds = r.durationTicks / 20;
-    recipes.push({ id: r.id, inputs, outputs, cost: seconds * (r.eut * euWeight + machineWeight) });
+    // cost per run: its share of the line's EU/t and machine count
+    const seconds = e.durationTicks / 20;
+    recipes.push({ id: e.recipe.id, inputs, outputs, cost: seconds * (e.eut * euWeight + machineWeight) });
   }
 
   // Tags: any member can stand in for the tag, one for one.
@@ -140,12 +144,14 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
 
   const targets: Record<string, number> = {};
   for (const [good, rate] of Object.entries(request.targets)) targets[good] = rate;
-  return { recipes, targets, raw, importKind };
+  return { recipes, targets, raw, importKind, effective };
 }
 
 export interface PlanNode {
   recipe: Recipe;
-  /** operations per second */
+  /** default machine, its overclock and the per-run flows */
+  config: EffectiveRecipe;
+  /** runs per second */
   rate: number;
   machines: number;
   /** EU/t drawn by all machines of this node */
@@ -182,20 +188,21 @@ export function readPlan(data: GameData, request: PlanRequest, problem: PlanProb
 
   for (const [id, rate] of Object.entries(solution.rates)) {
     if (id.startsWith(TAG_PREFIX)) continue;
-    const recipe = data.recipe(id)!;
+    const config = problem.effective.get(id)!;
+    const { recipe } = config;
     const inputs = new Map<number, number>();
     const outputs = new Map<number, number>();
-    for (const s of recipe.inputs) {
-      const amount = expected(s.amount, s.chance) * rate;
+    for (const s of config.inputs) {
+      const amount = s.amount * rate;
       const flows = tagFlow.get(s.good);
       if (flows) {
         const total = flows.reduce((sum, f) => sum + f.rate, 0);
         for (const f of flows) inputs.set(f.member, (inputs.get(f.member) ?? 0) + (amount * f.rate) / total);
       } else inputs.set(s.good, (inputs.get(s.good) ?? 0) + amount);
     }
-    for (const s of recipe.outputs) outputs.set(s.good, (outputs.get(s.good) ?? 0) + expected(s.amount, s.chance) * rate);
-    const machines = (rate * recipe.durationTicks) / 20;
-    const node: PlanNode = { recipe, rate, machines, eut: machines * recipe.eut, inputs, outputs };
+    for (const s of config.outputs) outputs.set(s.good, (outputs.get(s.good) ?? 0) + s.amount * rate);
+    const machines = (rate * config.durationTicks) / 20;
+    const node: PlanNode = { recipe, config, rate, machines, eut: machines * config.eut, inputs, outputs };
     plan.totalEut += node.eut;
     plan.nodes.push(node);
   }

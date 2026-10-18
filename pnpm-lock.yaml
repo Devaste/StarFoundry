@@ -91,6 +91,9 @@ importers:
       '@starfoundry/data':
         specifier: workspace:*
         version: link:../data
+      '@starfoundry/mechanics':
+        specifier: workspace:*
+        version: link:../mechanics
       highs:
         specifier: ^1.15.4
         version: 1.15.4
