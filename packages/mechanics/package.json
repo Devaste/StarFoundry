@@ -1,0 +1,10 @@
+{
+  "name": "@starfoundry/mechanics",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GT recipe mechanics: tiers, overclocking, parallels, chance boost (port of startech_mechanics.py)",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "devDependencies": { "@types/node": "^22.0.0" }
+}

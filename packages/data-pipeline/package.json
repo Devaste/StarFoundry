@@ -1,0 +1,10 @@
+{
+  "name": "@starfoundry/data-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns the StarDumper dump into the planner's data bundle",
+  "bin": { "starfoundry-bundle": "./dist/cli.js" },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
+  "devDependencies": { "@types/node": "^22.0.0" }
+}
