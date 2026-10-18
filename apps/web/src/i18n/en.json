@@ -2,21 +2,61 @@
   "title": "StarFoundry",
   "tagline": "Production planner for Star Technology",
   "unit": "Rate unit",
-  "units": { "s": "per second", "min": "per minute", "h": "per hour" },
+  "units": {
+    "s": "per second",
+    "min": "per minute",
+    "h": "per hour"
+  },
   "language": "Language",
   "loading": "Loading recipe data…",
   "loadError": "Could not load recipe data",
-  "search": { "placeholder": "Search items and fluids", "none": "Nothing found" },
+  "search": {
+    "placeholder": "Search items and fluids",
+    "none": "Nothing found"
+  },
   "item": {
     "pick": "Search for an item or fluid to see its recipes ({{recipes}} recipes loaded).",
     "producedBy": "Produced by",
     "usedIn": "Used in",
-    "more": "Show more ({{n}} left)"
+    "more": "Show more ({{n}} left)",
+    "addTarget": "+ Add to plan"
   },
   "recipe": {
     "tier": "tier",
     "generated": "generated",
     "circuit": "Circuit {{n}}",
     "notConsumed": "Not consumed"
+  },
+  "plan": {
+    "title": "Plan",
+    "targets": "Targets",
+    "noTargets": "Search an item and press “Add to plan”.",
+    "remove": "Remove",
+    "maxTier": "Max tier",
+    "empty": "Add a target to plan a production line: search an item on the left, open it and press “Add to plan”.",
+    "solving": "Solving…",
+    "failed": "The solver could not build a line ({{status}}).",
+    "power": "Power",
+    "machineTotal": "Machines",
+    "recipes": "Recipes",
+    "solvedIn": "solved in {{ms}} ms",
+    "baseNote": "Machines and power are at each recipe's own tier, without overclocking or parallels (exact GT mechanics come next).",
+    "tree": "Production tree",
+    "table": "Machines",
+    "machines": "{{n}} machines",
+    "loop": "loop",
+    "recipe": "Recipe",
+    "tier": "Tier",
+    "machineCol": "Machines",
+    "outputs": "Outputs",
+    "raw": "Raw resources",
+    "sources": "Inputs with no recipe",
+    "imported": "Imported (could be made)",
+    "byproducts": "Byproducts",
+    "import": {
+      "raw": "raw",
+      "source": "no recipe",
+      "producible": "imported"
+    }
   }
 }

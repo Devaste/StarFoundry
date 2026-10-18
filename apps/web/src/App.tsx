@@ -1,20 +1,20 @@
-import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { goodKey, parseGoodKey } from './components/GoodLink';
 import { ItemSearch } from './components/ItemSearch';
 import { ItemView } from './components/ItemView';
-import { DataContext, useLoadData } from './data';
+import { PlanView } from './components/PlanView';
+import { Targets } from './components/Targets';
+import { DataContext, useData, useLoadData } from './data';
 import { LANGUAGES } from './i18n';
-import { useHashParam } from './route';
-import { RATE_UNITS, type RateUnit } from './units';
+import { decodePlan, encodePlan, useSolvedPlan, type PlanState } from './plan';
+import { useHash } from './route';
+import { RATE_UNITS, UnitContext, type RateUnit } from './units';
 
 export function App() {
   const { t, i18n } = useTranslation();
   const [unit, setUnit] = useState<RateUnit>('s');
   const { loaded, error } = useLoadData(i18n.language);
-  const [itemKey, setItemKey] = useHashParam('item');
-  const selected = loaded && itemKey ? parseGoodKey(loaded.data, itemKey) : undefined;
-  const select = (good: number) => loaded && setItemKey(goodKey(loaded.data, good));
 
   return (
     <div className="app">
@@ -41,20 +41,57 @@ export function App() {
       {!loaded && !error && <p className="muted">{t('loading')}</p>}
       {loaded && (
         <DataContext.Provider value={loaded}>
-          <div className="columns">
-            <aside>
-              <ItemSearch onSelect={select} />
-            </aside>
-            <main>
-              {selected !== undefined ? (
-                <ItemView good={selected} onSelect={select} />
-              ) : (
-                <p className="muted">{t('item.pick', { recipes: loaded.data.recipes.length.toLocaleString() })}</p>
-              )}
-            </main>
-          </div>
+          <UnitContext.Provider value={unit}>
+            <Planner />
+          </UnitContext.Provider>
         </DataContext.Provider>
       )}
+    </div>
+  );
+}
+
+function Planner() {
+  const { t } = useTranslation();
+  const { data } = useData();
+  const [params, update] = useHash();
+  const state = decodePlan(data, params);
+  const solved = useSolvedPlan(data, state);
+  const itemKey = params.get('item');
+  const selected = itemKey ? parseGoodKey(data, itemKey) : undefined;
+  const view = params.get('view') === 'item' && selected !== undefined ? 'item' : 'plan';
+
+  const select = (good: number) => update({ item: goodKey(data, good), view: 'item' });
+  const setPlan = (next: PlanState) => update(encodePlan(data, next));
+  const addTarget = (good: number) => {
+    if (!state.targets.some((x) => x.good === good)) {
+      const rate = data.isFluid(good) ? 1000 : 1;
+      update({ ...encodePlan(data, { ...state, targets: [...state.targets, { good, rate }] }), view: 'plan' });
+    } else update({ view: 'plan' });
+  };
+
+  return (
+    <div className="columns">
+      <aside>
+        <Targets state={state} onChange={setPlan} onSelect={select} />
+        <ItemSearch onSelect={select} />
+      </aside>
+      <main>
+        <nav className="tabs main-tabs">
+          <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => update({ view: 'plan' })}>
+            {t('plan.title')}{solved.solving && ' …'}
+          </button>
+          {selected !== undefined && (
+            <button type="button" className={view === 'item' ? 'active' : ''} onClick={() => update({ view: 'item' })}>
+              {data.goodName(selected)}
+            </button>
+          )}
+        </nav>
+        {view === 'item' && selected !== undefined ? (
+          <ItemView good={selected} onSelect={select} onAddTarget={addTarget} />
+        ) : (
+          <PlanView {...solved} targets={state.targets} onSelect={select} />
+        )}
+      </main>
     </div>
   );
 }

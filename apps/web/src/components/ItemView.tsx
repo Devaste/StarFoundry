@@ -27,7 +27,11 @@ function RecipeList({ title, recipes, onSelect }: { title: string; recipes: numb
 }
 
 /** One item or fluid: its producer recipes and where it is used. */
-export function ItemView({ good, onSelect }: { good: number; onSelect: (good: number) => void }) {
+export function ItemView({ good, onSelect, onAddTarget }: {
+  good: number;
+  onSelect: (good: number) => void;
+  onAddTarget: (good: number) => void;
+}) {
   const { t } = useTranslation();
   const { data } = useData();
   return (
@@ -35,6 +39,9 @@ export function ItemView({ good, onSelect }: { good: number; onSelect: (good: nu
       <h2>
         {data.goodName(good)} <small className="muted">{data.goodIds[good]}</small>
       </h2>
+      {data.producers[good]!.length > 0 && (
+        <button type="button" className="primary" onClick={() => onAddTarget(good)}>{t('item.addTarget')}</button>
+      )}
       <RecipeList key={`p${good}`} title={t('item.producedBy')} recipes={data.producers[good]!} onSelect={onSelect} />
       <RecipeList key={`c${good}`} title={t('item.usedIn')} recipes={data.consumers[good]!} onSelect={onSelect} />
     </div>

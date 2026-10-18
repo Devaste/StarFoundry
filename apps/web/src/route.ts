@@ -1,19 +1,25 @@
 import { useEffect, useState } from 'react';
 
-/** Selected good in the URL hash (#item=<kind>:<id>), so links and back/forward work. */
-export function useHashParam(name: string): [string | undefined, (value: string | undefined) => void] {
-  const read = () => new URLSearchParams(location.hash.slice(1)).get(name) ?? undefined;
-  const [value, setValue] = useState(read);
+const read = () => new URLSearchParams(location.hash.slice(1));
+
+/**
+ * App state that belongs in links (selected item, view, plan targets) lives in the URL hash,
+ * so links can be shared and back/forward works.
+ */
+export function useHash(): [URLSearchParams, (changes: Record<string, string | undefined>) => void] {
+  const [params, setParams] = useState(read);
   useEffect(() => {
-    const onChange = () => setValue(read());
+    const onChange = () => setParams(read());
     addEventListener('hashchange', onChange);
     return () => removeEventListener('hashchange', onChange);
-  });
-  const set = (next: string | undefined) => {
-    const params = new URLSearchParams(location.hash.slice(1));
-    if (next === undefined) params.delete(name);
-    else params.set(name, next);
-    location.hash = params.toString();
+  }, []);
+  const update = (changes: Record<string, string | undefined>) => {
+    const next = read();
+    for (const [k, v] of Object.entries(changes)) {
+      if (v === undefined) next.delete(k);
+      else next.set(k, v);
+    }
+    location.hash = next.toString();
   };
-  return [value, set];
+  return [params, update];
 }

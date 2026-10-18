@@ -88,6 +88,9 @@ importers:
 
   packages/solver:
     dependencies:
+      '@starfoundry/data':
+        specifier: workspace:*
+        version: link:../data
       highs:
         specifier: ^1.15.4
         version: 1.15.4

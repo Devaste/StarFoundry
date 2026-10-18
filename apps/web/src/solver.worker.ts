@@ -4,7 +4,12 @@ import wasmUrl from 'highs/runtime?url';
 
 const ready = loadSolver({ locateFile: () => wasmUrl });
 
-self.onmessage = async (event: MessageEvent<ProductionProblem>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; problem: ProductionProblem }>) => {
   await ready;
-  self.postMessage(await solveProduction(event.data));
+  const { id, problem } = event.data;
+  try {
+    self.postMessage({ id, solution: await solveProduction(problem) });
+  } catch (e) {
+    self.postMessage({ id, error: String(e) });
+  }
 };

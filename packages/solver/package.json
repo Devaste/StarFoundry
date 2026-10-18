@@ -4,8 +4,22 @@
   "private": true,
   "type": "module",
   "description": "Production LP/MILP on top of HiGHS (WebAssembly)",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "dependencies": { "highs": "^1.15.4" },
-  "devDependencies": { "@types/node": "^22.0.0" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "highs": "^1.15.4",
+    "@starfoundry/data": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
 }

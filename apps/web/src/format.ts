@@ -17,5 +17,5 @@ export function formatEu(eu: number): string {
   for (const [div, suffix] of [[1e12, 'T'], [1e9, 'G'], [1e6, 'M'], [1e3, 'k']] as const) {
     if (abs >= div * 10) return `${formatNumber(Math.round((eu / div) * 100) / 100)}${suffix}`;
   }
-  return formatNumber(eu);
+  return formatNumber(Math.round(eu * 10) / 10);
 }
