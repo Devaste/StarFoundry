@@ -109,4 +109,5 @@ function signed(a: number): string {
   return a < 0 ? `- ${-a}` : `+ ${a}`;
 }
 export * from './effective.js';
+export * from './graph.js';
 export * from './plan.js';

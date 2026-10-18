@@ -7,6 +7,7 @@ import type { Target } from '../plan';
 import { formatRate, useUnit } from '../units';
 import { toggleBan, toggleRaw, usePlanActions } from '../planActions';
 import { GoodLink } from './GoodLink';
+import { PlanGraph } from './PlanGraph';
 
 /** rates below this (per second) are LP noise and hidden */
 const EPS = 1e-6;
@@ -167,7 +168,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
 }) {
   const { t } = useTranslation();
   const { data } = useData();
-  const [tab, setTab] = useState<'tree' | 'machines'>('tree');
+  const [tab, setTab] = useState<'graph' | 'tree' | 'machines'>('graph');
 
   if (!targets.length) return <p className="muted">{t('plan.empty')}</p>;
   if (error) return <p className="error">{error}</p>;
@@ -195,10 +196,13 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
       <div className="plan-grid">
         <div>
           <div className="tabs">
+            <button type="button" className={tab === 'graph' ? 'active' : ''} onClick={() => setTab('graph')}>{t('plan.graph')}</button>
             <button type="button" className={tab === 'tree' ? 'active' : ''} onClick={() => setTab('tree')}>{t('plan.tree')}</button>
             <button type="button" className={tab === 'machines' ? 'active' : ''} onClick={() => setTab('machines')}>{t('plan.table')}</button>
           </div>
-          {tab === 'tree' ? (
+          {tab === 'graph' ? (
+            <PlanGraph plan={plan} targets={targets} onSelect={onSelect} />
+          ) : tab === 'tree' ? (
             <ul className="tree">
               {targets.map((target) => (
                 <ItemBranch key={target.good} plan={plan} good={target.good} rate={target.rate} depth={0} path={[]} onSelect={onSelect} />

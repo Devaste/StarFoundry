@@ -69,7 +69,8 @@
     "setup": "machine…",
     "setupHint": "Set up the machine for this recipe: hatches, parallel hatch, coil",
     "configError": "setup ignored",
-    "configErrorHint": "Your machine setup cannot run this recipe; the default machine is used"
+    "configErrorHint": "Your machine setup cannot run this recipe; the default machine is used",
+    "graph": "Graph"
   },
   "picker": {
     "title": "Recipes for {{name}}",
@@ -120,5 +121,19 @@
       "insufficient_voltage": "The energy hatches cannot reach the recipe's voltage.",
       "coil_temperature_too_low": "This coil is too cold for the recipe."
     }
+  },
+  "graph": {
+    "machines": "{{n}} machines ({{whole}})",
+    "layout": "Laying out the graph…",
+    "help": "Click a machine to set it up, an input or shared item to pick its recipe, an output to open the item. Orange arrows run in a loop.",
+    "kind": {
+      "raw": "raw",
+      "source": "no recipe",
+      "producible": "imported",
+      "target": "target",
+      "byproduct": "byproduct",
+      "hub": "shared"
+    },
+    "byproducts": "Show byproducts"
   }
 }
