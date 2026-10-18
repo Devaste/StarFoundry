@@ -1,4 +1,4 @@
-import type { Plan } from '@starfoundry/solver';
+import type { Plan, PlanNode } from '@starfoundry/solver';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
@@ -30,6 +30,25 @@ function GoodRates({ title, rates, onSelect }: { title: string; rates: Map<numbe
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Machine name, tier, coil and what the overclock did (e.g. "2 OC, ×4 parallel"). */
+function MachineLabel({ node }: { node: PlanNode }) {
+  const { t } = useTranslation();
+  const { data } = useData();
+  const { config } = node;
+  const name = config.machine !== undefined ? data.machineName(config.machine) : data.recipeTypeName(node.recipe.type);
+  const details = [
+    config.ocLevel > 0 && t('plan.oc', { n: config.ocLevel }),
+    config.parallels > 1 && t('plan.parallel', { n: config.parallels }),
+    config.coil && t('plan.coil', { coil: config.coil }),
+  ].filter(Boolean);
+  return (
+    <span className="machine-label" title={`${data.recipeTypeName(node.recipe.type)} · ${node.recipe.id}`}>
+      <strong>{name}</strong> <span className="tier">{tierName(config.machineTier)}</span>
+      {details.length > 0 && <span className="muted"> {details.join(', ')}</span>}
+    </span>
   );
 }
 
@@ -68,8 +87,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
               <li key={n}>
                 <div className="tree-row recipe-row">
                   <span className="toggle" />
-                  <strong>{data.recipeTypeName(node.recipe.type)}</strong>
-                  <span className="tier">{tierName(node.recipe.tier)}</span>
+                  <MachineLabel node={node} />
                   <span>{t('plan.machines', { n: formatNumber(node.machines * share) })}</span>
                   <span className="muted">{formatEu(node.eut * share)} EU/t</span>
                   {loop && <span className="badge loop">{t('plan.loop')}</span>}
@@ -112,7 +130,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
 
   const machines = plan.nodes.reduce((sum, n) => sum + n.machines, 0);
   const byTier = new Map<number, number>();
-  for (const n of plan.nodes) byTier.set(n.recipe.tier, (byTier.get(n.recipe.tier) ?? 0) + n.eut);
+  for (const n of plan.nodes) byTier.set(n.config.machineTier, (byTier.get(n.config.machineTier) ?? 0) + n.eut);
 
   return (
     <div className={solving ? 'plan solving' : 'plan'}>
@@ -121,7 +139,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
         <div><span className="muted">{t('plan.machineTotal')}</span><strong>{formatNumber(Math.round(machines * 10) / 10)}</strong></div>
         <div><span className="muted">{t('plan.recipes')}</span><strong>{plan.nodes.length}</strong></div>
         <div className="by-tier">
-          {[...byTier].sort((a, b) => a[0] - b[0]).map(([tier, eut]) => (
+          {[...byTier].filter(([, eut]) => eut >= 0.05).sort((a, b) => a[0] - b[0]).map(([tier, eut]) => (
             <span key={tier}><span className="tier">{tierName(tier)}</span> {formatEu(eut)}</span>
           ))}
         </div>
@@ -144,14 +162,13 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
             <table className="machines">
               <thead>
                 <tr>
-                  <th>{t('plan.recipe')}</th><th>{t('plan.tier')}</th><th>{t('plan.machineCol')}</th><th>EU/t</th><th>{t('plan.outputs')}</th>
+                  <th>{t('plan.machine')}</th><th>{t('plan.machineCol')}</th><th>EU/t</th><th>{t('plan.outputs')}</th>
                 </tr>
               </thead>
               <tbody>
                 {plan.nodes.filter((n) => n.machines > EPS).map((node) => (
                   <tr key={node.recipe.id} title={node.recipe.id}>
-                    <td>{data.recipeTypeName(node.recipe.type)}</td>
-                    <td className="tier">{tierName(node.recipe.tier)}</td>
+                    <td><MachineLabel node={node} /></td>
                     <td className="num">{formatNumber(Math.round(node.machines * 100) / 100)} <span className="muted">({Math.ceil(node.machines - 1e-6)})</span></td>
                     <td className="num">{formatEu(node.eut)}</td>
                     <td>

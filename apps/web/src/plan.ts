@@ -74,7 +74,8 @@ export function useSolvedPlan(data: GameData, state: PlanState): { plan?: Plan; 
       else setResult({ plan: readPlan(data, request, problem, e.data.solution), solving: false, ms });
     };
     w.addEventListener('message', onMessage);
-    w.postMessage({ id, problem });
+    const { recipes, targets, raw: rawCosts } = problem; // the solver needs only the LP itself
+    w.postMessage({ id, problem: { recipes, targets, raw: rawCosts } });
     return () => w.removeEventListener('message', onMessage);
   }, [data, raw, key]);
 

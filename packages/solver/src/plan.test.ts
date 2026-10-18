@@ -9,7 +9,13 @@ const bundle: RawBundle = {
   goods: { ids: ['x:ore', 'x:dust', 'x:ingot', 'x:plate', 'x:slag', 'x:water', '#x:any'], kinds: [0, 0, 0, 0, 0, 1, 2] },
   tags: { 6: [0, 1] },
   recipeTypes: ['x:macerator', 'x:furnace', 'x:bender', 'x:fancy'],
-  machines: [],
+  machines: [
+    { id: 'x:lv_macerator', tier: 1, types: [0] },
+    { id: 'x:lv_furnace', tier: 1, types: [1] },
+    { id: 'x:lv_bender', tier: 1, types: [2] },
+    { id: 'x:mv_bender', tier: 2, types: [2] },
+    { id: 'x:iv_fancy', tier: 5, types: [3] },
+  ],
   recipes: [
     ['macerate', 0, 100, 2, 0, [[0, 1]], [[1, 2], [4, 1, 0.5]]],
     ['smelt', 1, 200, 30, 1, [[1, 1], [5, 100]], [[2, 1]]],
@@ -26,15 +32,17 @@ async function plan(request: PlanRequest) {
 }
 
 describe('plan', () => {
-  it('builds the chain down to raw resources with machine counts and power', async () => {
+  it('builds the chain down to raw resources with machine counts and overclocked power', async () => {
     const p = await plan({ targets: { 3: 2 }, settings: { maxTier: 4, raw: [0, 5] } });
     expect(p.status).toBe('Optimal');
     const node = (id: string) => p.nodes.find((n) => n.recipe.id === id)!;
     expect(node('bend').rate).toBeCloseTo(1);
-    expect(node('bend').machines).toBeCloseTo(2); // 1 op/s × 2 s
+    // the MV bender overclocks the LV recipe once: 120 EU/t, 1 s
+    expect(node('bend').config).toMatchObject({ machineTier: 2, durationTicks: 20, eut: 120, ocLevel: 1 });
+    expect(node('bend').machines).toBeCloseTo(1);
     expect(node('smelt').machines).toBeCloseTo(30); // 3 ingots/s × 10 s
     expect(node('macerate').rate).toBeCloseTo(1.5);
-    expect(p.totalEut).toBeCloseTo(2 * 30 + 30 * 30 + 7.5 * 2);
+    expect(p.totalEut).toBeCloseTo(1 * 120 + 30 * 30 + 7.5 * 2);
     expect(p.imports.raw.get(0)).toBeCloseTo(1.5);
     expect(p.imports.raw.get(5)).toBeCloseTo(300);
     expect(p.byproducts.get(4)).toBeCloseTo(0.75);

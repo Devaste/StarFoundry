@@ -155,10 +155,10 @@ export function buildNames(bundle: RawBundle, names: DumpNames, locale: string):
     goods: bundle.goods.ids.map((id, n) => {
       const kind = bundle.goods.kinds[n];
       if (kind === GoodKind.Tag) return null;
-      return (kind === GoodKind.Fluid ? names.fluids : names.items)?.[id] ?? null;
+      return clean((kind === GoodKind.Fluid ? names.fluids : names.items)?.[id]);
     }),
-    recipeTypes: bundle.recipeTypes.map((id) => names.recipe_types?.[id] ?? null),
-    machines: bundle.machines.map((m) => names.machines?.[m.id] ?? null),
+    recipeTypes: bundle.recipeTypes.map((id) => clean(names.recipe_types?.[id])),
+    machines: bundle.machines.map((m) => clean(names.machines?.[m.id])),
   };
 }
 
@@ -179,7 +179,9 @@ function tagName(content: unknown, fluid: boolean): string | undefined {
 
 /** Minecraft formatting codes arrive as "?c" after the dump's charset round trip. */
 function cleanTooltip(s: string) {
-  return s.replace(/[?§][0-9a-fk-or]/g, '').trim();
+  return s.replace(/[?§][0-9a-fk-or]/g, '').replace(/\s+/g, ' ').trim();
 }
+
+const clean = (name: string | undefined) => (name === undefined ? null : cleanTooltip(name));
 
 const round = (x: number) => Math.round(x * 1e6) / 1e6;

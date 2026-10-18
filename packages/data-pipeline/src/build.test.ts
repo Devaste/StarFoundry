@@ -93,7 +93,8 @@ describe('buildBundle', () => {
   });
 
   it('builds names with fallback and search', () => {
-    const en = buildNames(bundle, { items: { 'gtceu:dust': 'Dust', 'minecraft:sand': 'Sand' }, fluids: { 'gtceu:water': 'Water' } }, 'en');
+    const en = buildNames(bundle, { items: { 'gtceu:dust': 'Dust', 'minecraft:sand': 'Sand' }, fluids: { 'gtceu:water': 'Water' }, machines: { 'gtceu:lv_centrifuge': '?9Basic Centrifuge ?r' } }, 'en');
+    expect(en.machines).toEqual(['Basic Centrifuge']);
     const ru = buildNames(bundle, { items: { 'gtceu:dust': 'Пыль' } }, 'ru');
     data.setNames(ru, en);
     expect(data.goodName(g(GoodKind.Item, 'gtceu:dust'))).toBe('Пыль');

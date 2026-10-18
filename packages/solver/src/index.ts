@@ -108,4 +108,5 @@ export async function solveProduction(problem: ProductionProblem): Promise<Produ
 function signed(a: number): string {
   return a < 0 ? `- ${-a}` : `+ ${a}`;
 }
+export * from './effective.js';
 export * from './plan.js';
