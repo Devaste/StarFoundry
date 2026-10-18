@@ -21,9 +21,11 @@ export interface PlanState {
   rawRemove: number[];
   /** recipe id -> the machine the user set up for it */
   configs: Record<string, MachineConfig>;
+  /** recipe mode: only goods the user picked a recipe for are made, the rest are inputs of the chain */
+  manual: boolean;
 }
 
-export const emptyPlan = (): PlanState => ({ targets: [], maxTier: DEFAULT_MAX_TIER, locks: {}, bans: [], rawAdd: [], rawRemove: [], configs: {} });
+export const emptyPlan = (): PlanState => ({ targets: [], maxTier: DEFAULT_MAX_TIER, locks: {}, bans: [], rawAdd: [], rawRemove: [], configs: {}, manual: false });
 
 export const DEFAULT_MAX_TIER = 5; // IV
 
@@ -33,7 +35,7 @@ const split = (value: string | null) => (value ? value.split('~') : []);
 /**
  * Plan <-> URL hash params, so a plan is a shareable link:
  * t=item:gtceu:x@0.5~fluid:gtceu:y@2, tier=5, lock=item:gtceu:x>recipe/id, ban=recipe/id, raw=+item:a~-fluid:b,
- * cfg=recipe/id>machine:id,hatchTier,amps,count,parallel,coil,bulking (empty fields use the default)
+ * cfg=recipe/id>machine:id,hatchTier,amps,count,parallel,coil,bulking (empty fields use the default), mode=recipe
  */
 export function encodePlan(data: GameData, plan: PlanState): Record<string, string | undefined> {
   return {
@@ -43,6 +45,7 @@ export function encodePlan(data: GameData, plan: PlanState): Record<string, stri
     ban: list(plan.bans),
     raw: list([...plan.rawAdd.map((g) => `+${goodKey(data, g)}`), ...plan.rawRemove.map((g) => `-${goodKey(data, g)}`)]),
     cfg: list(Object.entries(plan.configs).map(([recipe, c]) => `${recipe}>${encodeConfig(c)}`)),
+    mode: plan.manual ? 'recipe' : undefined,
   };
 }
 
@@ -70,7 +73,7 @@ export function decodePlan(data: GameData, params: URLSearchParams): PlanState {
     if (good !== undefined && rate > 0) targets.push({ good, rate });
   }
   const tier = Number(params.get('tier') ?? DEFAULT_MAX_TIER);
-  const plan: PlanState = { ...emptyPlan(), targets, maxTier: Number.isInteger(tier) ? tier : DEFAULT_MAX_TIER };
+  const plan: PlanState = { ...emptyPlan(), targets, maxTier: Number.isInteger(tier) ? tier : DEFAULT_MAX_TIER, manual: params.get('mode') === 'recipe' };
   for (const part of split(params.get('lock'))) {
     const at = part.indexOf('>');
     const good = parseGoodKey(data, part.slice(0, at));
@@ -127,7 +130,7 @@ export function useSolvedPlan(data: GameData, state: PlanState): { plan?: Plan; 
     const request: PlanRequest = {
       targets: Object.fromEntries(state.targets.map((t) => [t.good, t.rate])),
       // goods the user marked raw are supplied from outside at no cost, so the solver never makes them
-      settings: { maxTier: state.maxTier, raw: planRaw(raw, state), supplied: state.rawAdd, locks: state.locks, bans: state.bans, configs: state.configs },
+      settings: { maxTier: state.maxTier, raw: planRaw(raw, state), supplied: state.rawAdd, locks: state.locks, bans: state.bans, configs: state.configs, manual: state.manual },
     };
     const problem = buildProblem(data, request);
     setResult((r) => ({ ...r, solving: true }));

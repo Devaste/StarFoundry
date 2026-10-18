@@ -30,6 +30,11 @@ export interface PlanSettings {
   bans?: string[];
   /** recipe id -> the machine the user set up for it */
   configs?: Record<string, MachineConfig>;
+  /**
+   * Recipe mode: the user builds the chain by hand. Only goods with a picked recipe (locks) are made, on the
+   * picked recipe at any tier; every other input is an input of the chain.
+   */
+  manual?: boolean;
 }
 
 export interface PlanRequest {
@@ -43,22 +48,17 @@ export const rawWeight = (data: GameData, good: number) => (data.isFluid(good) ?
 
 const TAG_PREFIX = 'tag:';
 
-const RAW_FLUIDS = new Set([
-  'minecraft:water', 'minecraft:lava', 'gtceu:air', 'gtceu:nether_air', 'gtceu:ender_air', 'gtceu:oil', 'gtceu:oil_light',
-  'gtceu:oil_medium', 'gtceu:oil_heavy', 'gtceu:natural_gas', 'gtceu:salt_water',
-]);
-const ORE = /:(?!crushed_|purified_|refined_|impure_|pure_|raw_)[a-z0-9_]+_ore$/;
-const RAW_ORE = /:raw_[a-z0-9_]+$/;
-const NOT_RAW_ORE = /_(dust|block|rubber)$|rubber/;
+/**
+ * Star Technology is a skyblock: ores come from sieves (gravel <- cobblestone <- rock breaker), not from the
+ * world, so only fluids taken from an infinite world source start as raw. Everything else must be made.
+ */
+const RAW_FLUIDS = new Set(['minecraft:water', 'minecraft:lava']);
 
-/** Default raw resources: ore blocks, raw ores and fluids pumped or collected from the world. */
+/** Default raw resources: water and lava. */
 export function defaultRaw(data: GameData): number[] {
   const raw: number[] = [];
   data.goodIds.forEach((id, good) => {
-    const kind = data.goodKinds[good];
-    if (kind === GoodKind.Fluid ? RAW_FLUIDS.has(id) : kind === GoodKind.Item && (ORE.test(id) || (RAW_ORE.test(id) && !NOT_RAW_ORE.test(id)))) {
-      raw.push(good);
-    }
+    if (data.goodKinds[good] === GoodKind.Fluid && RAW_FLUIDS.has(id)) raw.push(good);
   });
   return raw;
 }
@@ -67,21 +67,86 @@ export function allowedRecipe(r: Recipe, settings: PlanSettings): boolean {
   return r.tier <= settings.maxTier && r.eut >= 0 && r.outputs.length > 0 && !settings.bans?.includes(r.id);
 }
 
+/**
+ * Goods the line can actually get: raw and supplied goods, then everything an allowed (or locked) recipe makes
+ * once all its consumed inputs are available, repeated until nothing new appears. A recipe that needs a good
+ * outside this set (higher-tier tech, an item no recipe makes) can never run, so the plan never uses it.
+ */
+export function reachableGoods(data: GameData, settings: PlanSettings): Set<number> {
+  const available = new Set<number>([...settings.raw, ...(settings.supplied ?? [])]);
+  const locked = new Set(Object.values(settings.locks ?? {}));
+  const usable = (r: Recipe) => locked.has(r.id) || allowedRecipe(r, settings);
+  // consumed inputs per recipe still missing; a tag counts once and is met by any member
+  const missing = new Int32Array(data.recipes.length);
+  const queue: number[] = [];
+  const fire = (r: Recipe) => {
+    for (const s of r.outputs) if (!available.has(s.good)) {
+      available.add(s.good);
+      queue.push(s.good);
+    }
+  };
+  for (const r of data.recipes) {
+    if (!usable(r)) {
+      missing[r.index] = -1;
+      continue;
+    }
+    missing[r.index] = new Set(r.inputs.map((s) => s.good)).size;
+  }
+  for (const g of available) queue.push(g);
+  for (const r of data.recipes) if (missing[r.index] === 0) fire(r);
+  const met = new Set<number>();
+  const meet = (good: number) => {
+    if (met.has(good)) return;
+    met.add(good);
+    for (const ri of data.consumers[good] ?? []) {
+      if (missing[ri]! > 0 && --missing[ri]! === 0) fire(data.recipes[ri]!);
+    }
+  };
+  while (queue.length) {
+    const good = queue.pop()!;
+    meet(good);
+    for (const tag of data.memberOf[good] ?? []) {
+      available.add(tag);
+      meet(tag);
+    }
+  }
+  return available;
+}
+
 /** Producers the plan may use for a good: the locked recipe if there is one, else every allowed producer. */
-export function producersFor(data: GameData, good: number, settings: PlanSettings): Recipe[] {
+export function producersFor(data: GameData, good: number, settings: PlanSettings, reachable?: Set<number>): Recipe[] {
   const locked = settings.locks?.[good];
   const lockedRecipe = locked === undefined ? undefined : data.recipe(locked);
   if (lockedRecipe) return [lockedRecipe];
-  return data.producers[good]!.map((r) => data.recipes[r]!).filter((r) => allowedRecipe(r, settings));
+  return data.producers[good]!
+    .map((r) => data.recipes[r]!)
+    .filter((r) => allowedRecipe(r, settings) && (!reachable || r.inputs.every((s) => reachable.has(s.good))));
 }
 
-/** Recipes reachable backwards from the targets through allowed producers, as their default machine runs them. */
-export function candidateRecipes(data: GameData, request: PlanRequest): EffectiveRecipe[] {
-  const seen = new Set<number>([...request.settings.raw, ...(request.settings.supplied ?? [])]);
+export interface Candidates {
+  recipes: EffectiveRecipe[];
+  /** recipe mode: inputs the user did not expand, taken as inputs of the chain */
+  leaves: Set<number>;
+  /** targets nothing reachable can make */
+  unreachable: number[];
+}
+
+/**
+ * Recipes reachable backwards from the targets through producers that can actually run (see reachableGoods),
+ * as their machine runs them. In recipe mode only goods with a picked recipe are expanded.
+ */
+export function candidateRecipes(data: GameData, request: PlanRequest): Candidates {
+  const { settings } = request;
+  // in recipe mode the user picks every recipe, so nothing is pruned for being out of reach
+  const reachable = settings.manual ? undefined : reachableGoods(data, settings);
+  const seen = new Set<number>([...settings.raw, ...(settings.supplied ?? [])]);
   const picked = new Map<number, EffectiveRecipe>();
-  const queue = Object.keys(request.targets).map(Number);
-  while (queue.length) {
-    const good = queue.pop()!;
+  const leaves = new Set<number>();
+  const targets = Object.keys(request.targets).map(Number);
+  const unreachable = reachable ? targets.filter((g) => !reachable.has(g)) : [];
+  const queue = [...targets];
+  for (let head = 0; head < queue.length; head++) {
+    const good = queue[head]!;
     if (seen.has(good)) continue;
     seen.add(good);
     const members = data.tags.get(good);
@@ -89,25 +154,36 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Effectiv
       queue.push(...members);
       continue;
     }
-    for (const recipe of producersFor(data, good, request.settings)) {
+    if (settings.manual && settings.locks?.[good] === undefined) {
+      leaves.add(good);
+      continue;
+    }
+    for (const recipe of producersFor(data, good, settings, reachable)) {
       if (picked.has(recipe.index)) continue;
       // a locked recipe above the plan's tier runs on a machine of its own tier
-      const effective = effectiveRecipe(data, recipe, Math.max(request.settings.maxTier, recipe.tier), request.settings.configs?.[recipe.id]);
+      const effective = effectiveRecipe(data, recipe, Math.max(settings.maxTier, recipe.tier), settings.configs?.[recipe.id]);
       if (!effective) continue;
       picked.set(recipe.index, effective);
       for (const s of recipe.inputs) queue.push(s.good);
     }
   }
-  return [...picked.values()];
+  return { recipes: [...picked.values()], leaves, unreachable };
 }
 
-/** Why a good may be imported: marked raw, nothing allowed makes it, or as a costly last resort. */
-export type ImportKind = 'raw' | 'source' | 'producible';
+/**
+ * Why a good may be imported: marked raw, an input at the edge of a recipe-mode chain, nothing reachable makes it,
+ * or as a costly last resort.
+ */
+export type ImportKind = 'raw' | 'leaf' | 'source' | 'producible';
+
+export const IMPORT_KINDS: readonly ImportKind[] = ['raw', 'leaf', 'source', 'producible'];
 
 export interface PlanProblem extends ProductionProblem {
   importKind: Record<string, ImportKind>;
   /** recipe id -> machine config and per-run flows behind its LP column (not needed by the solver itself) */
   effective: Map<string, EffectiveRecipe>;
+  /** targets nothing reachable can make (imported as a last resort) */
+  unreachable: number[];
 }
 
 export function buildProblem(data: GameData, request: PlanRequest): PlanProblem {
@@ -123,7 +199,10 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
   const goods = new Set<number>(Object.keys(request.targets).map(Number));
   const effective = new Map<string, EffectiveRecipe>();
 
-  for (const e of candidateRecipes(data, request)) {
+  const candidates = candidateRecipes(data, request);
+  const made = new Set<number>();
+  for (const e of candidates.recipes) {
+    for (const o of e.outputs) made.add(o.good);
     effective.set(e.recipe.id, e);
     const inputs: Record<string, number> = {};
     const outputs: Record<string, number> = {};
@@ -156,16 +235,15 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
   const importKind: Record<string, ImportKind> = {};
   for (const good of goods) {
     if (data.goodKinds[good] === GoodKind.Tag) continue;
-    const kind: ImportKind = rawSet.has(good)
-      ? 'raw'
-      : producersFor(data, good, settings).length ? 'producible' : 'source';
+    const kind: ImportKind = rawSet.has(good) ? 'raw' : candidates.leaves.has(good) ? 'leaf' : made.has(good) ? 'producible' : 'source';
     importKind[key(good)] = kind;
-    raw[key(good)] = supplied.has(good) ? 0 : rawWeight(data, good) * (kind === 'raw' ? 1 : kind === 'source' ? sourcePenalty : penalty);
+    const weight = kind === 'raw' || kind === 'leaf' ? 1 : kind === 'source' ? sourcePenalty : penalty;
+    raw[key(good)] = supplied.has(good) ? 0 : rawWeight(data, good) * weight;
   }
 
   const targets: Record<string, number> = {};
   for (const [good, rate] of Object.entries(request.targets)) targets[good] = rate;
-  return { recipes, targets, raw, importKind, effective };
+  return { recipes, targets, raw, importKind, effective, unreachable: candidates.unreachable };
 }
 
 export interface PlanNode {
@@ -187,6 +265,8 @@ export interface Plan {
   nodes: PlanNode[];
   /** good -> per second entering the line, by why it may be imported */
   imports: Record<ImportKind, Map<number, number>>;
+  /** targets nothing reachable can make at this tier from the raw resources */
+  unreachable: number[];
   byproducts: Map<number, number>;
   totalEut: number;
   /** good -> per second produced inside the line, by node */
@@ -195,7 +275,7 @@ export interface Plan {
 
 export function readPlan(data: GameData, request: PlanRequest, problem: PlanProblem, solution: ProductionSolution): Plan {
   const plan: Plan = {
-    status: solution.status, nodes: [], imports: { raw: new Map(), source: new Map(), producible: new Map() }, byproducts: new Map(), totalEut: 0, producersOf: new Map(),
+    status: solution.status, nodes: [], imports: { raw: new Map(), leaf: new Map(), source: new Map(), producible: new Map() }, unreachable: problem.unreachable, byproducts: new Map(), totalEut: 0, producersOf: new Map(),
   };
   if (solution.status !== 'Optimal') return plan;
 

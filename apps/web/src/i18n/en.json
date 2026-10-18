@@ -54,7 +54,8 @@
     "import": {
       "raw": "raw",
       "source": "no recipe",
-      "producible": "imported"
+      "producible": "imported",
+      "leaf": "input"
     },
     "machine": "Machine",
     "oc": "{{n}} OC",
@@ -70,7 +71,9 @@
     "setupHint": "Set up the machine for this recipe: hatches, parallel hatch, coil",
     "configError": "setup ignored",
     "configErrorHint": "Your machine setup cannot run this recipe; the default machine is used",
-    "graph": "Graph"
+    "graph": "Graph",
+    "leaves": "Chain inputs",
+    "unreachable": "{{names}}: no recipe chain at the max tier starts from the raw resources. Raise the max tier, buy an input raw, or switch to recipe mode."
   },
   "picker": {
     "title": "Recipes for {{name}}",
@@ -85,7 +88,8 @@
       "banned": "banned",
       "active": "in plan",
       "aboveTier": "above max tier"
-    }
+    },
+    "unexpand": "Don’t make it (use as an input)"
   },
   "adjust": {
     "title": "Your changes",
@@ -132,8 +136,16 @@
       "producible": "imported",
       "target": "target",
       "byproduct": "byproduct",
-      "hub": "shared"
+      "hub": "shared",
+      "leaf": "input"
     },
     "byproducts": "Show byproducts"
+  },
+  "mode": {
+    "title": "Mode",
+    "plan": "Plan",
+    "recipe": "Recipe",
+    "planHelp": "The solver builds the whole line down to water, lava and the rock breaker.",
+    "recipeHelp": "You build the chain: “recipe…” on an item expands it with the recipe you pick, “machine…” sets the machine and its tier. Items you do not expand are inputs of the chain."
   }
 }

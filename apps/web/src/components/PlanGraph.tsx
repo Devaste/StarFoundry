@@ -22,7 +22,7 @@ let elk: InstanceType<typeof ELK> | undefined;
 const getElk = () => (elk ??= new ELK({ workerFactory: () => new Worker(elkWorkerUrl) }));
 
 type RecipeData = { title: string; tier: string; machines: string; eut: string; detail: string; configured: boolean; approximate: boolean };
-type ItemData = { name: string; rate: string; kind: 'raw' | 'source' | 'producible' | 'target' | 'byproduct' | 'hub'; label: string; fluid: boolean };
+type ItemData = { name: string; rate: string; kind: 'raw' | 'leaf' | 'source' | 'producible' | 'target' | 'byproduct' | 'hub'; label: string; fluid: boolean };
 type FlowData = { points: { x: number; y: number }[]; label: string; labelAt?: { x: number; y: number }; loop: boolean; fluid: boolean };
 
 function RecipeNode({ data }: NodeProps<Node<RecipeData>>) {
