@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@starfoundry/data": "workspace:*",
     "@starfoundry/mechanics": "workspace:*",
     "@starfoundry/solver": "workspace:*",
     "highs": "^1.15.4",

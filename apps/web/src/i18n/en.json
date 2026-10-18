@@ -4,5 +4,19 @@
   "unit": "Rate unit",
   "units": { "s": "per second", "min": "per minute", "h": "per hour" },
   "language": "Language",
-  "demo": "Solver check: {{plates}} plates/{{unit}} need {{dust}} dust/{{unit}}"
+  "loading": "Loading recipe data…",
+  "loadError": "Could not load recipe data",
+  "search": { "placeholder": "Search items and fluids", "none": "Nothing found" },
+  "item": {
+    "pick": "Search for an item or fluid to see its recipes ({{recipes}} recipes loaded).",
+    "producedBy": "Produced by",
+    "usedIn": "Used in",
+    "more": "Show more ({{n}} left)"
+  },
+  "recipe": {
+    "tier": "tier",
+    "generated": "generated",
+    "circuit": "Circuit {{n}}",
+    "notConsumed": "Not consumed"
+  }
 }

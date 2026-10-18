@@ -11,7 +11,8 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "dev": "pnpm --filter @starfoundry/web dev"
+    "dev": "pnpm --filter @starfoundry/web dev",
+    "bundle": "turbo run build --filter @starfoundry/data-pipeline && node packages/data-pipeline/dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

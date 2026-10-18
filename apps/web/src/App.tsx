@@ -1,35 +1,27 @@
-import type { ProductionSolution } from '@starfoundry/solver';
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { goodKey, parseGoodKey } from './components/GoodLink';
+import { ItemSearch } from './components/ItemSearch';
+import { ItemView } from './components/ItemView';
+import { DataContext, useLoadData } from './data';
 import { LANGUAGES } from './i18n';
-import { RATE_UNITS, toDisplay, type RateUnit } from './units';
-
-const demoProblem = {
-  recipes: [
-    { id: 'ingot', inputs: { dust: 1 }, outputs: { ingot: 1 } },
-    { id: 'plate', inputs: { ingot: 3 }, outputs: { plate: 2 } },
-  ],
-  targets: { plate: 4 },
-  raw: { dust: 1 },
-};
+import { useHashParam } from './route';
+import { RATE_UNITS, type RateUnit } from './units';
 
 export function App() {
   const { t, i18n } = useTranslation();
   const [unit, setUnit] = useState<RateUnit>('s');
-  const [solution, setSolution] = useState<ProductionSolution>();
-
-  useEffect(() => {
-    const worker = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent<ProductionSolution>) => setSolution(e.data);
-    worker.postMessage(demoProblem);
-    return () => worker.terminate();
-  }, []);
+  const { loaded, error } = useLoadData(i18n.language);
+  const [itemKey, setItemKey] = useHashParam('item');
+  const selected = loaded && itemKey ? parseGoodKey(loaded.data, itemKey) : undefined;
+  const select = (good: number) => loaded && setItemKey(goodKey(loaded.data, good));
 
   return (
-    <main>
-      <header>
+    <div className="app">
+      <header className="topbar">
         <h1>{t('title')}</h1>
-        <p>{t('tagline')}</p>
+        <span className="muted">{t('tagline')}</span>
+        <span className="spacer" />
         <label>
           {t('unit')}{' '}
           <select value={unit} onChange={(e) => setUnit(e.target.value as RateUnit)}>
@@ -37,7 +29,7 @@ export function App() {
               <option key={u} value={u}>{t(`units.${u}`)}</option>
             ))}
           </select>
-        </label>{' '}
+        </label>
         <label>
           {t('language')}{' '}
           <select value={i18n.language} onChange={(e) => void i18n.changeLanguage(e.target.value)}>
@@ -45,15 +37,24 @@ export function App() {
           </select>
         </label>
       </header>
-      {solution?.status === 'Optimal' && (
-        <p>
-          {t('demo', {
-            plates: toDisplay(demoProblem.targets.plate, unit),
-            dust: toDisplay(solution.imports.dust ?? 0, unit),
-            unit,
-          })}
-        </p>
+      {error && <p className="error">{t('loadError')}: {error}</p>}
+      {!loaded && !error && <p className="muted">{t('loading')}</p>}
+      {loaded && (
+        <DataContext.Provider value={loaded}>
+          <div className="columns">
+            <aside>
+              <ItemSearch onSelect={select} />
+            </aside>
+            <main>
+              {selected !== undefined ? (
+                <ItemView good={selected} onSelect={select} />
+              ) : (
+                <p className="muted">{t('item.pick', { recipes: loaded.data.recipes.length.toLocaleString() })}</p>
+              )}
+            </main>
+          </div>
+        </DataContext.Provider>
       )}
-    </main>
+    </div>
   );
 }

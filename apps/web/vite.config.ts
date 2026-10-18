@@ -18,8 +18,8 @@ export default defineConfig({
         display: 'standalone',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' }],
       },
-      // The HiGHS wasm (~3.5 MB) must be precached for offline use.
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,wasm}'], maximumFileSizeToCacheInBytes: 8 * 1024 * 1024 },
+      // The HiGHS wasm (~3.5 MB) and the data bundle (~4 MB) must be precached for offline use.
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,wasm,json}'], maximumFileSizeToCacheInBytes: 8 * 1024 * 1024 },
     }),
   ],
   worker: { format: 'es' },

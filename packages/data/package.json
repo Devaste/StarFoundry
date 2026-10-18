@@ -1,0 +1,10 @@
+{
+  "name": "@starfoundry/data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Data bundle format and the decoded game data model (recipes, goods, names, search)",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
+  "devDependencies": { "@types/node": "^22.0.0" }
+}
