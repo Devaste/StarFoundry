@@ -18,7 +18,10 @@ export interface PlanSettings {
   machineWeight?: number;
   /** cost multiplier for an input no allowed recipe makes and that is not marked raw */
   sourcePenalty?: number;
-  /** cost multiplier for importing an item that some allowed recipe could make (keeps the LP feasible) */
+  /**
+   * cost multiplier for importing an item that some allowed recipe could make (keeps the LP feasible). Deep chains
+   * (sieve to naquadah) cost thousands of raw units per item, so it must be far above any real chain.
+   */
   importPenalty?: number;
   /** goods bought as raw resources: imported at their raw weight, never produced */
   raw: number[];
@@ -75,9 +78,13 @@ export function allowedRecipe(r: Recipe, settings: PlanSettings): boolean {
 export function reachableGoods(data: GameData, settings: PlanSettings): Set<number> {
   const available = new Set<number>([...settings.raw, ...(settings.supplied ?? [])]);
   const locked = new Set(Object.values(settings.locks ?? {}));
-  const usable = (r: Recipe) => locked.has(r.id) || allowedRecipe(r, settings);
+  // a recipe its machine cannot run at the plan's tier (say, no coil reaches its heat) makes nothing
+  const usable = (r: Recipe) =>
+    locked.has(r.id) ? effectiveRecipe(data, r, Math.max(settings.maxTier, r.tier), settings.configs?.[r.id]) !== undefined
+      : allowedRecipe(r, settings) && effectiveRecipe(data, r, settings.maxTier, settings.configs?.[r.id]) !== undefined;
   // consumed inputs per recipe still missing; a tag counts once and is met by any member
-  const missing = new Int32Array(data.recipes.length);
+  // (data.consumers of a good also lists recipes that take a tag it is in, so count only the recipe's own inputs)
+  const missing: (Set<number> | undefined)[] = new Array(data.recipes.length);
   const queue: number[] = [];
   const fire = (r: Recipe) => {
     for (const s of r.outputs) if (!available.has(s.good)) {
@@ -86,20 +93,17 @@ export function reachableGoods(data: GameData, settings: PlanSettings): Set<numb
     }
   };
   for (const r of data.recipes) {
-    if (!usable(r)) {
-      missing[r.index] = -1;
-      continue;
-    }
-    missing[r.index] = new Set(r.inputs.map((s) => s.good)).size;
+    if (usable(r)) missing[r.index] = new Set(r.inputs.map((s) => s.good));
   }
   for (const g of available) queue.push(g);
-  for (const r of data.recipes) if (missing[r.index] === 0) fire(r);
+  for (const r of data.recipes) if (missing[r.index]?.size === 0) fire(r);
   const met = new Set<number>();
   const meet = (good: number) => {
     if (met.has(good)) return;
     met.add(good);
     for (const ri of data.consumers[good] ?? []) {
-      if (missing[ri]! > 0 && --missing[ri]! === 0) fire(data.recipes[ri]!);
+      const need = missing[ri];
+      if (need?.delete(good) && need.size === 0) fire(data.recipes[ri]!);
     }
   };
   while (queue.length) {
@@ -127,6 +131,8 @@ export interface Candidates {
   recipes: EffectiveRecipe[];
   /** recipe mode: inputs the user did not expand, taken as inputs of the chain */
   leaves: Set<number>;
+  /** goods the line can get (undefined in recipe mode, where nothing is pruned) */
+  reachable: Set<number> | undefined;
   /** targets nothing reachable can make */
   unreachable: number[];
 }
@@ -151,7 +157,8 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Candidat
     seen.add(good);
     const members = data.tags.get(good);
     if (members) {
-      queue.push(...members);
+      // a tag is met by any of its members; the ones nothing reachable makes would only enter the plan as imports
+      queue.push(...(reachable ? members.filter((m) => reachable.has(m)) : members));
       continue;
     }
     if (settings.manual && settings.locks?.[good] === undefined) {
@@ -167,7 +174,7 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Candidat
       for (const s of recipe.inputs) queue.push(s.good);
     }
   }
-  return { recipes: [...picked.values()], leaves, unreachable };
+  return { recipes: [...picked.values()], leaves, unreachable, reachable };
 }
 
 /**
@@ -193,7 +200,7 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
   const supplied = new Set(settings.supplied);
   const rawSet = new Set([...settings.raw, ...supplied]);
   const sourcePenalty = settings.sourcePenalty ?? 10;
-  const penalty = settings.importPenalty ?? 1000;
+  const penalty = settings.importPenalty ?? 1e6;
   const key = (good: number) => String(good);
   const recipes: LpRecipe[] = [];
   const goods = new Set<number>(Object.keys(request.targets).map(Number));
@@ -223,9 +230,10 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
     recipes.push({ id: e.recipe.id, inputs, outputs, cost });
   }
 
-  // Tags: any member can stand in for the tag, one for one.
+  // Tags: any member the line can get stands in for the tag, one for one (an unreachable member would only be bought).
   for (const good of [...goods]) {
     for (const m of data.tags.get(good) ?? []) {
+      if (candidates.reachable && !candidates.reachable.has(m)) continue;
       recipes.push({ id: `${TAG_PREFIX}${good}:${m}`, inputs: { [key(m)]: 1 }, outputs: { [key(good)]: 1 }, cost: 0 });
       goods.add(m);
     }
