@@ -5,6 +5,7 @@ import { useData } from '../data';
 import { formatEu, formatNumber, tierName } from '../format';
 import type { Target } from '../plan';
 import { formatRate, useUnit } from '../units';
+import { toggleBan, toggleRaw, usePlanActions } from '../planActions';
 import { GoodLink } from './GoodLink';
 
 /** rates below this (per second) are LP noise and hidden */
@@ -30,6 +31,29 @@ function GoodRates({ title, rates, onSelect }: { title: string; rates: Map<numbe
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Row buttons on an item: pick its recipe, or switch between buying it raw and producing it. */
+function ItemActions({ good }: { good: number }) {
+  const { t } = useTranslation();
+  const { data } = useData();
+  const actions = usePlanActions();
+  const locked = actions.state.locks[good] !== undefined;
+  const raw = actions.raw.has(good);
+  const producible = data.producers[good]!.length > 0;
+  return (
+    <span className="item-actions">
+      {locked && <span className="badge locked" title={t('plan.lockedHint')}>{t('picker.status.locked')}</span>}
+      {producible && !raw && (
+        <button type="button" className="row-action" onClick={() => actions.openPicker(good)}>{t('plan.chooseRecipe')}</button>
+      )}
+      {producible && (
+        <button type="button" className="row-action" onClick={() => toggleRaw(actions, good)}>
+          {raw ? t('plan.produce') : t('plan.makeRaw')}
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -61,6 +85,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
 }) {
   const { t } = useTranslation();
   const { data } = useData();
+  const actions = usePlanActions();
   const [open, setOpen] = useState(depth < 3);
   const producers = (plan.producersOf.get(good) ?? []).filter((p) => p.amount > EPS);
   const produced = producers.reduce((sum, p) => sum + p.amount, 0);
@@ -77,6 +102,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
         ) : <span className="toggle" />}
         <Amount good={good} perSecond={rate} /> <GoodLink good={good} onSelect={onSelect} />
         {imported && <span className={`badge ${imported}`}>{t(`plan.import.${imported}`)}</span>}
+        <ItemActions good={good} />
       </div>
       {open && producers.length > 0 && (
         <ul>
@@ -91,6 +117,9 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
                   <span>{t('plan.machines', { n: formatNumber(node.machines * share) })}</span>
                   <span className="muted">{formatEu(node.eut * share)} EU/t</span>
                   {loop && <span className="badge loop">{t('plan.loop')}</span>}
+                  <button type="button" className="row-action" title={t('plan.banRecipe')} onClick={() => toggleBan(actions, node.recipe.id)}>
+                    {t('plan.ban')}
+                  </button>
                 </div>
                 {!loop && (
                   <ul>

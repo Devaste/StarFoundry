@@ -1,11 +1,12 @@
 import type { Recipe, Stack } from '@starfoundry/data';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
 import { formatEu, formatNumber, formatPercent, formatSeconds, tierName } from '../format';
 import { GoodLink } from './GoodLink';
 
 /** Recipe card (SPEC §3): machine, tier, EU/t, duration, inputs/outputs with chances, conditions. */
-export function RecipeCard({ recipe, onSelect }: { recipe: Recipe; onSelect: (good: number) => void }) {
+export function RecipeCard({ recipe, onSelect, actions }: { recipe: Recipe; onSelect: (good: number) => void; actions?: ReactNode }) {
   const { t } = useTranslation();
   const { data } = useData();
   const { extra } = recipe;
@@ -39,6 +40,7 @@ export function RecipeCard({ recipe, onSelect }: { recipe: Recipe; onSelect: (go
         </span>
         <span>{formatSeconds(recipe.durationTicks)}</span>
         {extra.cwu !== undefined && <span>{formatNumber(extra.cwu)} CWU/t</span>}
+        {actions && <span className="card-actions">{actions}</span>}
       </header>
       <div className="flows">
         <ul>{recipe.inputs.map((s, n) => stack(s, n, false))}</ul>

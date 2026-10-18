@@ -22,6 +22,12 @@ export interface PlanSettings {
   importPenalty?: number;
   /** goods bought as raw resources: imported at their raw weight, never produced */
   raw: number[];
+  /** goods the user supplies from outside the line: imported at no cost (implies raw) */
+  supplied?: number[];
+  /** good -> the only recipe allowed to produce it (picked by the user; may be above maxTier) */
+  locks?: Record<number, string>;
+  /** recipe ids the user forbade */
+  bans?: string[];
 }
 
 export interface PlanRequest {
@@ -56,12 +62,20 @@ export function defaultRaw(data: GameData): number[] {
 }
 
 export function allowedRecipe(r: Recipe, settings: PlanSettings): boolean {
-  return r.tier <= settings.maxTier && r.eut >= 0 && r.outputs.length > 0;
+  return r.tier <= settings.maxTier && r.eut >= 0 && r.outputs.length > 0 && !settings.bans?.includes(r.id);
+}
+
+/** Producers the plan may use for a good: the locked recipe if there is one, else every allowed producer. */
+export function producersFor(data: GameData, good: number, settings: PlanSettings): Recipe[] {
+  const locked = settings.locks?.[good];
+  const lockedRecipe = locked === undefined ? undefined : data.recipe(locked);
+  if (lockedRecipe) return [lockedRecipe];
+  return data.producers[good]!.map((r) => data.recipes[r]!).filter((r) => allowedRecipe(r, settings));
 }
 
 /** Recipes reachable backwards from the targets through allowed producers, as their default machine runs them. */
 export function candidateRecipes(data: GameData, request: PlanRequest): EffectiveRecipe[] {
-  const seen = new Set<number>(request.settings.raw);
+  const seen = new Set<number>([...request.settings.raw, ...(request.settings.supplied ?? [])]);
   const picked = new Map<number, EffectiveRecipe>();
   const queue = Object.keys(request.targets).map(Number);
   while (queue.length) {
@@ -73,12 +87,12 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Effectiv
       queue.push(...members);
       continue;
     }
-    for (const r of data.producers[good]!) {
-      const recipe = data.recipes[r]!;
-      if (picked.has(r) || !allowedRecipe(recipe, request.settings)) continue;
-      const effective = effectiveRecipe(data, recipe, request.settings.maxTier);
+    for (const recipe of producersFor(data, good, request.settings)) {
+      if (picked.has(recipe.index)) continue;
+      // a locked recipe above the plan's tier runs on a machine of its own tier
+      const effective = effectiveRecipe(data, recipe, Math.max(request.settings.maxTier, recipe.tier));
       if (!effective) continue;
-      picked.set(r, effective);
+      picked.set(recipe.index, effective);
       for (const s of recipe.inputs) queue.push(s.good);
     }
   }
@@ -98,7 +112,8 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
   const { settings } = request;
   const euWeight = settings.euWeight ?? 1e-4;
   const machineWeight = settings.machineWeight ?? 0.01;
-  const rawSet = new Set(settings.raw);
+  const supplied = new Set(settings.supplied);
+  const rawSet = new Set([...settings.raw, ...supplied]);
   const sourcePenalty = settings.sourcePenalty ?? 10;
   const penalty = settings.importPenalty ?? 1000;
   const key = (good: number) => String(good);
@@ -137,9 +152,9 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
     if (data.goodKinds[good] === GoodKind.Tag) continue;
     const kind: ImportKind = rawSet.has(good)
       ? 'raw'
-      : data.producers[good]!.some((r) => allowedRecipe(data.recipes[r]!, settings)) ? 'producible' : 'source';
+      : producersFor(data, good, settings).length ? 'producible' : 'source';
     importKind[key(good)] = kind;
-    raw[key(good)] = rawWeight(data, good) * (kind === 'raw' ? 1 : kind === 'source' ? sourcePenalty : penalty);
+    raw[key(good)] = supplied.has(good) ? 0 : rawWeight(data, good) * (kind === 'raw' ? 1 : kind === 'source' ? sourcePenalty : penalty);
   }
 
   const targets: Record<string, number> = {};
