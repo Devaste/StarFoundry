@@ -59,6 +59,34 @@
     "machine": "Machine",
     "oc": "{{n}} OC",
     "parallel": "×{{n}} parallel",
-    "coil": "{{coil}} coil"
+    "coil": "{{coil}} coil",
+    "chooseRecipe": "recipe…",
+    "makeRaw": "buy raw",
+    "produce": "produce",
+    "ban": "ban",
+    "banRecipe": "Ban this recipe from the plan",
+    "lockedHint": "You picked this recipe"
+  },
+  "picker": {
+    "title": "Recipes for {{name}}",
+    "close": "Close",
+    "help": "“Use” makes the plan produce this item only with that recipe; “Ban” keeps a recipe out of the plan.",
+    "auto": "Let the solver choose again",
+    "use": "Use",
+    "ban": "Ban",
+    "unban": "Allow",
+    "status": {
+      "locked": "picked",
+      "banned": "banned",
+      "active": "in plan",
+      "aboveTier": "above max tier"
+    }
+  },
+  "adjust": {
+    "title": "Your changes",
+    "lock": "Recipe",
+    "ban": "Banned",
+    "raw": "Bought",
+    "produce": "Produce"
   }
 }

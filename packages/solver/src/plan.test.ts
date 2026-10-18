@@ -62,4 +62,24 @@ describe('plan', () => {
     expect(p.imports.source.get(0)).toBeCloseTo(1.5);
     expect(p.imports.source.get(5)).toBeCloseTo(300);
   });
+
+  it('respects bans and locks', async () => {
+    const banned = await plan({ targets: { 3: 10 }, settings: { maxTier: 5, raw: [0, 5], bans: ['fancy'] } });
+    expect(banned.nodes.map((n) => n.recipe.id).sort()).toEqual(['bend', 'macerate', 'smelt']);
+    // locking the plate to the high-tier recipe works even when the plan's tier is lower
+    const locked = await plan({ targets: { 3: 10 }, settings: { maxTier: 1, raw: [0, 5], locks: { 3: 'fancy' } } });
+    expect(locked.nodes.map((n) => n.recipe.id)).toContain('fancy');
+    expect(locked.nodes.map((n) => n.recipe.id)).not.toContain('bend');
+  });
+
+  it('buys a supplied good instead of making it, even when making it is cheap', async () => {
+    // ingots and a little slag: maceration makes dust and slag together
+    const both = { targets: { 2: 1, 4: 0.1 } };
+    const made = await plan({ ...both, settings: { maxTier: 4, raw: [0, 1, 5] } });
+    expect(made.nodes.map((n) => n.recipe.id).sort()).toEqual(['macerate', 'smelt']);
+    expect(made.imports.raw.get(1) ?? 0).toBeCloseTo(0);
+    const bought = await plan({ ...both, settings: { maxTier: 4, raw: [0, 5], supplied: [1] } });
+    // 0.2 macerations/s give the slag and 0.4 dust; the other 0.6 dust is bought
+    expect(bought.imports.raw.get(1)).toBeCloseTo(0.6);
+  });
 });
