@@ -68,11 +68,13 @@ function Planner() {
 
   const select = (good: number) => update({ item: goodKey(data, good), view: 'item' });
   const setPlan = (next: PlanState) => update(encodePlan(data, next));
-  const addTarget = (good: number) => {
-    if (!state.targets.some((x) => x.good === good)) {
-      const rate = data.isFluid(good) ? 1000 : 1;
-      update({ ...encodePlan(data, { ...state, targets: [...state.targets, { good, rate }] }), view: 'plan' });
-    } else update({ view: 'plan' });
+  /** Adds the good to the plan's targets, made with `recipe` when one is given (else the solver picks). */
+  const addTarget = (good: number, recipe?: string) => {
+    const targets = state.targets.some((x) => x.good === good) ? state.targets : [...state.targets, { good, rate: data.isFluid(good) ? 1000 : 1 }];
+    const locks = { ...state.locks };
+    if (recipe) locks[good] = recipe;
+    const bans = recipe ? state.bans.filter((b) => b !== recipe) : state.bans;
+    update({ ...encodePlan(data, { ...state, targets, locks, bans }), view: 'plan' });
   };
 
   const actions: PlanActions = {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
 
@@ -6,7 +6,9 @@ export function ItemSearch({ onSelect }: { onSelect: (good: number) => void }) {
   const { t } = useTranslation();
   const { data, search } = useData();
   const [query, setQuery] = useState('');
-  const results = useMemo(() => search.search(query, 60), [search, query]);
+  // typing stays responsive while the (few-ms) search catches up
+  const deferred = useDeferredValue(query);
+  const results = useMemo(() => search.search(deferred, 60), [search, deferred]);
 
   return (
     <section className="search">

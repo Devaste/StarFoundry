@@ -19,7 +19,11 @@
     "producedBy": "Produced by",
     "usedIn": "Used in",
     "more": "Show more ({{n}} left)",
-    "addTarget": "+ Add to plan"
+    "planHelp": "Pick the recipe to make it with: “Plan with this” adds the item to the plan on that recipe.",
+    "planWith": "Plan with this",
+    "picked": "in plan",
+    "planAuto": "or let the solver pick",
+    "inPlanAuto": "go to the plan"
   },
   "recipe": {
     "tier": "tier",
@@ -30,10 +34,10 @@
   "plan": {
     "title": "Plan",
     "targets": "Targets",
-    "noTargets": "Search an item and press “Add to plan”.",
+    "noTargets": "Search an item and pick the recipe to make it with.",
     "remove": "Remove",
     "maxTier": "Max tier",
-    "empty": "Add a target to plan a production line: search an item on the left, open it and press “Add to plan”.",
+    "empty": "Add a target to plan a production line: search an item on the left, open it and press “Plan with this” on the recipe to make it with.",
     "solving": "Solving…",
     "failed": "The solver could not build a line ({{status}}).",
     "power": "Power",
@@ -147,5 +151,8 @@
     "recipe": "Recipe",
     "planHelp": "The solver builds the whole line down to water, lava and the rock breaker.",
     "recipeHelp": "You build the chain: “recipe…” on an item expands it with the recipe you pick, “machine…” sets the machine and its tier. Items you do not expand are inputs of the chain."
+  },
+  "tag": {
+    "less": "less"
   }
 }

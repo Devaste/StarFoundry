@@ -76,6 +76,19 @@ describe('plan', () => {
     expect(reach(1)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
+  it('does not count a tag member as the recipe\'s other inputs', () => {
+    // goods: 0 a (raw), 1 b (nothing makes it), 2 c, 3 tag(a|b); c needs the tag and b
+    const tagged = new GameData({
+      format: 1, dataVersion: 'test',
+      goods: { ids: ['x:a', 'x:b', 'x:c', '#x:ab'], kinds: [0, 0, 0, 2] },
+      tags: { 3: [0, 1] },
+      recipeTypes: ['x:mixer'],
+      machines: [{ id: 'x:lv_mixer', tier: 1, types: [0] }],
+      recipes: [['mix', 0, 20, 8, 1, [[3, 1], [1, 1]], [[2, 1]]]],
+    });
+    expect([...reachableGoods(tagged, { maxTier: 1, raw: [0] })].sort()).toEqual([0, 3]);
+  });
+
   it('builds only the recipes the user picked in recipe mode', async () => {
     const settings = { maxTier: 1, raw: [0, 5], manual: true };
     // nothing picked: the target itself is the chain's input
