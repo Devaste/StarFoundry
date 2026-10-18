@@ -57,13 +57,27 @@ function ItemActions({ good }: { good: number }) {
   );
 }
 
+/** Opens the machine setup of a recipe; marked when the user set one. */
+function SetupButton({ recipe }: { recipe: string }) {
+  const { t } = useTranslation();
+  const actions = usePlanActions();
+  const set = actions.state.configs[recipe] !== undefined;
+  return (
+    <button type="button" className={set ? 'row-action configured' : 'row-action'} title={t('plan.setupHint')} onClick={() => actions.openConfig(recipe)}>
+      {t('plan.setup')}
+    </button>
+  );
+}
+
 /** Machine name, tier, coil and what the overclock did (e.g. "2 OC, ×4 parallel"). */
 function MachineLabel({ node }: { node: PlanNode }) {
   const { t } = useTranslation();
   const { data } = useData();
   const { config } = node;
   const name = config.machine !== undefined ? data.machineName(config.machine) : data.recipeTypeName(node.recipe.type);
+  const hatch = config.hatch && (config.hatch.count > 1 || config.hatch.amps !== 2) && `${config.hatch.count}× ${config.hatch.amps}A`;
   const details = [
+    hatch,
     config.ocLevel > 0 && t('plan.oc', { n: config.ocLevel }),
     config.parallels > 1 && t('plan.parallel', { n: config.parallels }),
     config.coil && t('plan.coil', { coil: config.coil }),
@@ -72,6 +86,8 @@ function MachineLabel({ node }: { node: PlanNode }) {
     <span className="machine-label" title={`${data.recipeTypeName(node.recipe.type)} · ${node.recipe.id}`}>
       <strong>{name}</strong> <span className="tier">{tierName(config.machineTier)}</span>
       {details.length > 0 && <span className="muted"> {details.join(', ')}</span>}
+      {config.approximate && <span className="badge approx" title={t('setup.approximate')}>≈</span>}
+      {config.configError && <span className="badge banned" title={t('plan.configErrorHint')}>{t('plan.configError')}</span>}
     </span>
   );
 }
@@ -117,6 +133,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
                   <span>{t('plan.machines', { n: formatNumber(node.machines * share) })}</span>
                   <span className="muted">{formatEu(node.eut * share)} EU/t</span>
                   {loop && <span className="badge loop">{t('plan.loop')}</span>}
+                  <SetupButton recipe={node.recipe.id} />
                   <button type="button" className="row-action" title={t('plan.banRecipe')} onClick={() => toggleBan(actions, node.recipe.id)}>
                     {t('plan.ban')}
                   </button>
@@ -197,7 +214,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
               <tbody>
                 {plan.nodes.filter((n) => n.machines > EPS).map((node) => (
                   <tr key={node.recipe.id} title={node.recipe.id}>
-                    <td><MachineLabel node={node} /></td>
+                    <td><MachineLabel node={node} /> <SetupButton recipe={node.recipe.id} /></td>
                     <td className="num">{formatNumber(Math.round(node.machines * 100) / 100)} <span className="muted">({Math.ceil(node.machines - 1e-6)})</span></td>
                     <td className="num">{formatEu(node.eut)}</td>
                     <td>

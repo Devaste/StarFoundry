@@ -82,4 +82,15 @@ describe('plan', () => {
     // 0.2 macerations/s give the slag and 0.4 dust; the other 0.6 dust is bought
     expect(bought.imports.raw.get(1)).toBeCloseTo(0.6);
   });
+
+  it('runs a recipe on the machine the user set up', async () => {
+    const settings = { maxTier: 4, raw: [0, 5] };
+    const auto = await plan({ targets: { 3: 2 }, settings });
+    const lv = await plan({ targets: { 3: 2 }, settings: { ...settings, configs: { bend: { machine: 'x:lv_bender' } } } });
+    const bend = (p: typeof auto) => p.nodes.find((n) => n.recipe.id === 'bend')!;
+    // the LV bender does not overclock: twice the machines at a quarter of the power each
+    expect(bend(lv).machines).toBeCloseTo(bend(auto).machines * 2);
+    expect(bend(lv).eut).toBeCloseTo(bend(auto).eut / 2);
+    expect(bend(lv).config.configured).toBe(true);
+  });
 });

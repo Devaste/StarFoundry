@@ -44,6 +44,7 @@ export class GameData {
   readonly machinesByType: number[][];
   private readonly goodIndex = new Map<string, number>();
   private readonly recipeIndex = new Map<string, number>();
+  private readonly machineIds = new Map<string, number>();
   private names: RawNames | undefined;
   private fallbackNames: RawNames | undefined;
 
@@ -80,6 +81,7 @@ export class GameData {
     for (const list of this.producers) list.sort(byTier);
     for (const list of this.consumers) list.sort(byTier);
 
+    this.machines.forEach((m, n) => this.machineIds.set(m.id, n));
     this.machinesByType = this.recipeTypes.map(() => []);
     this.machines.forEach((m, n) => m.types.forEach((t) => this.machinesByType[t]!.push(n)));
     for (const list of this.machinesByType) list.sort((a, b) => this.machines[a]!.tier - this.machines[b]!.tier);
@@ -97,6 +99,10 @@ export class GameData {
 
   good(kind: GoodKind, id: string): number | undefined {
     return this.goodIndex.get(`${kind}:${id}`);
+  }
+
+  machineIndex(id: string): number | undefined {
+    return this.machineIds.get(id);
   }
 
   recipe(id: string): Recipe | undefined {

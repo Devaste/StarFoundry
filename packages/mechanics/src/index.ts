@@ -17,3 +17,4 @@ export function tierOf(eut: number): number {
 export const TICKS_PER_SECOND = 20;
 
 export * from './oc.js';
+export * from './machines.js';

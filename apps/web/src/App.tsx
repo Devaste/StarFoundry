@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { goodKey, parseGoodKey } from './components/GoodLink';
 import { ItemSearch } from './components/ItemSearch';
 import { ItemView } from './components/ItemView';
+import { MachineSetup } from './components/MachineSetup';
 import { PlanView } from './components/PlanView';
 import { RecipePicker } from './components/RecipePicker';
 import { Targets } from './components/Targets';
@@ -60,6 +61,7 @@ function Planner() {
   const solved = useSolvedPlan(data, state);
   const defaultRaw = useDefaultRaw(data);
   const [picker, setPicker] = useState<number>();
+  const [configRecipe, setConfigRecipe] = useState<string>();
   const itemKey = params.get('item');
   const selected = itemKey ? parseGoodKey(data, itemKey) : undefined;
   const view = params.get('view') === 'item' && selected !== undefined ? 'item' : 'plan';
@@ -79,6 +81,7 @@ function Planner() {
     active: new Set(solved.plan?.nodes.map((n) => n.recipe.id) ?? []),
     setState: setPlan,
     openPicker: setPicker,
+    openConfig: setConfigRecipe,
   };
 
   return (
@@ -106,6 +109,7 @@ function Planner() {
           )}
         </main>
         {picker !== undefined && <RecipePicker good={picker} onClose={() => setPicker(undefined)} onSelect={select} />}
+        {configRecipe !== undefined && <MachineSetup recipeId={configRecipe} onClose={() => setConfigRecipe(undefined)} />}
       </div>
     </PlanActionsContext.Provider>
   );
