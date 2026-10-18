@@ -4,7 +4,7 @@
  * flows straight from supplier to consumers (split in proportion); a good with several of both meets
  * at a hub node, so the graph gets suppliers + consumers edges instead of suppliers × consumers.
  */
-import type { ImportKind, Plan } from './plan.js';
+import { IMPORT_KINDS, type ImportKind, type Plan } from './plan.js';
 
 export type GraphNode =
   | { id: string; kind: 'recipe'; node: number }
@@ -45,7 +45,7 @@ export function planGraph(plan: Plan, targets: Record<number, number>): PlanGrap
     for (const [good, amount] of n.inputs) add(demand, good, id, amount);
     for (const [good, amount] of n.outputs) add(supply, good, id, amount);
   });
-  for (const importKind of ['raw', 'source', 'producible'] as const) {
+  for (const importKind of IMPORT_KINDS) {
     for (const [good, rate] of plan.imports[importKind]) {
       if (rate <= EPS) continue;
       const id = `i${good}`;

@@ -1,6 +1,6 @@
 import { GameData, type RawBundle } from '@starfoundry/data';
 import { describe, expect, it } from 'vitest';
-import { buildProblem, readPlan, solveProduction, type PlanRequest } from './index.js';
+import { buildProblem, reachableGoods, readPlan, solveProduction, type PlanRequest } from './index.js';
 
 // goods: 0 ore, 1 dust, 2 ingot, 3 plate, 4 slag, 5 water (fluid), 6 tag(ore|dust)
 const bundle: RawBundle = {
@@ -57,10 +57,38 @@ describe('plan', () => {
     expect(p.imports.raw.get(0)).toBeCloseTo(0.5);
   });
 
-  it('imports an unmakeable input as a source', async () => {
+  it('never plans a recipe whose inputs cannot be had, and says the target is out of reach', async () => {
+    // no raw ore or water: nothing can make the plate
     const p = await plan({ targets: { 3: 2 }, settings: { maxTier: 4, raw: [] } });
-    expect(p.imports.source.get(0)).toBeCloseTo(1.5);
-    expect(p.imports.source.get(5)).toBeCloseTo(300);
+    expect(p.nodes).toEqual([]);
+    expect(p.unreachable).toEqual([3]);
+    expect(p.imports.source.get(3)).toBeCloseTo(2);
+    // supplying the ore and water makes the line possible again
+    const ok = await plan({ targets: { 3: 2 }, settings: { maxTier: 4, raw: [], supplied: [0, 5] } });
+    expect(ok.unreachable).toEqual([]);
+    expect(ok.nodes.map((n) => n.recipe.id).sort()).toEqual(['bend', 'macerate', 'smelt']);
+  });
+
+  it('reaches only goods whose whole chain fits the tier', () => {
+    const reach = (maxTier: number) => [...reachableGoods(data, { maxTier, raw: [0, 5] })].sort((a, b) => a - b);
+    // ULV: maceration only (the furnace is LV), so no ingot and no plate
+    expect(reach(0)).toEqual([0, 1, 4, 5, 6]);
+    expect(reach(1)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it('builds only the recipes the user picked in recipe mode', async () => {
+    const settings = { maxTier: 1, raw: [0, 5], manual: true };
+    // nothing picked: the target itself is the chain's input
+    const none = await plan({ targets: { 3: 2 }, settings });
+    expect(none.nodes).toEqual([]);
+    expect(none.imports.leaf.get(3)).toBeCloseTo(2);
+    // the plate on the bender and the ingot on the furnace; the dust stays an input, even though it could be made
+    const two = await plan({ targets: { 3: 2 }, settings: { ...settings, locks: { 3: 'bend', 2: 'smelt' } } });
+    expect(two.nodes.map((n) => n.recipe.id).sort()).toEqual(['bend', 'smelt']);
+    expect(two.imports.leaf.get(1)).toBeCloseTo(3);
+    // a picked recipe above the plan's tier still runs (on a machine of its own tier)
+    const fancy = await plan({ targets: { 3: 10 }, settings: { ...settings, locks: { 3: 'fancy' } } });
+    expect(fancy.nodes.map((n) => n.recipe.id)).toEqual(['fancy']);
   });
 
   it('respects bans and locks', async () => {

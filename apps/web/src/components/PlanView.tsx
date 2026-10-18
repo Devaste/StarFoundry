@@ -1,4 +1,4 @@
-import type { Plan, PlanNode } from '@starfoundry/solver';
+import { IMPORT_KINDS, type Plan, type PlanNode } from '@starfoundry/solver';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
@@ -106,7 +106,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
   const [open, setOpen] = useState(depth < 3);
   const producers = (plan.producersOf.get(good) ?? []).filter((p) => p.amount > EPS);
   const produced = producers.reduce((sum, p) => sum + p.amount, 0);
-  const imported = (['raw', 'source', 'producible'] as const).find((k) => (plan.imports[k].get(good) ?? 0) > EPS);
+  const imported = IMPORT_KINDS.find((k) => (plan.imports[k].get(good) ?? 0) > EPS);
   const importedAmount = imported ? plan.imports[imported].get(good)! : 0;
   // share of this good's whole supply (made and imported) that this branch consumes
   const share = produced > EPS ? Math.min(1, rate / (produced + importedAmount)) : 0;
@@ -192,6 +192,9 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
         </div>
         {ms !== undefined && <small className="muted">{t('plan.solvedIn', { ms })}</small>}
       </div>
+      {plan.unreachable.length > 0 && (
+        <p className="error">{t('plan.unreachable', { names: plan.unreachable.map((g) => data.goodName(g)).join(', ') })}</p>
+      )}
       <p className="muted note">{t('plan.baseNote')}</p>
       <div className="plan-grid">
         <div>
@@ -233,6 +236,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
           )}
         </div>
         <aside className="flows-side">
+          <GoodRates title={t('plan.leaves')} rates={plan.imports.leaf} onSelect={onSelect} />
           <GoodRates title={t('plan.raw')} rates={plan.imports.raw} onSelect={onSelect} />
           <GoodRates title={t('plan.sources')} rates={plan.imports.source} onSelect={onSelect} />
           <GoodRates title={t('plan.imported')} rates={plan.imports.producible} onSelect={onSelect} />
