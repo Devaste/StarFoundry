@@ -95,9 +95,12 @@ export function planGraph(plan: Plan, targets: Record<number, number>): PlanGrap
     }
   }
 
-  const component = stronglyConnected(nodes.map((n) => n.id), edges);
+  // a recipe or byproduct whose every flow is LP noise would stand alone, unconnected: leave it out
+  const linked = new Set(edges.flatMap((e) => [e.from, e.to]));
+  const shown = nodes.filter((n) => linked.has(n.id) || n.kind === 'target');
+  const component = stronglyConnected(shown.map((n) => n.id), edges);
   for (const e of edges) e.loop = component.get(e.from) === component.get(e.to);
-  return { nodes, edges };
+  return { nodes: shown, edges };
 }
 
 /** Tarjan's SCC: node id -> component index. */
