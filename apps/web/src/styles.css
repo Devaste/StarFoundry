@@ -105,3 +105,28 @@ table.machines .num { text-align: right; white-space: nowrap; font-variant-numer
 .setup-result dt { color: var(--muted); }
 .setup-result dd { margin: 0; }
 .setup-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.graph { height: min(75vh, 900px); min-height: 420px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+.graph { position: relative; }
+.graph .react-flow { flex: 1; }
+.graph.pending .react-flow { opacity: 0.4; }
+.graph-pending { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5; padding: 2px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font-size: 0.85rem; }
+.graph-footer { display: flex; gap: 16px; align-items: center; padding: 4px 8px; border-top: 1px solid var(--line); font-size: 0.85rem; }
+.graph-footer label { white-space: nowrap; }
+.graph-node { box-sizing: border-box; height: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: Canvas; color: CanvasText; font-size: 12px; line-height: 1.35; cursor: pointer; overflow: hidden; }
+.graph-node:hover { border-color: var(--accent); }
+.graph-node.recipe { border-width: 2px; }
+.graph-node.recipe.configured { border-color: var(--accent); }
+.graph-node.item { background: var(--panel); }
+.graph-node.item.target { border-color: var(--accent); }
+.graph-node.item.raw { border-color: #16a34a; }
+.graph-node.item.fluid .amount { color: var(--fluid); }
+.graph-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph-detail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge.target { color: var(--accent); border-color: var(--accent); }
+.react-flow__edge-path.flow { stroke: var(--muted); stroke-width: 1.5; }
+.react-flow__edge-path.flow.fluid { stroke: var(--fluid); }
+.react-flow__edge-path.flow.loop { stroke: #d97706; stroke-width: 2; }
+.flow-label { position: absolute; font-size: 10.5px; line-height: 16px; padding: 0 3px; border-radius: 4px; background: Canvas; color: var(--muted); white-space: nowrap; pointer-events: none; }
+.flow-label.fluid { color: var(--fluid); }
+.flow-label.loop { color: #d97706; }
+.graph-node.item.hub { border-style: dashed; }
