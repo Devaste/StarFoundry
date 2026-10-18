@@ -36,7 +36,16 @@ const dump = {
     }),
   },
   'gtceu:macerator': {
-    'gtceu:macerator/recycle': recipe({ category: 'gtceu:macerator_recycling', contents: { outputs: { item: [item('gtceu:dust', 1)] } } }),
+    'gtceu:macerator/recycle': recipe({
+      category: 'gtceu:macerator_recycling',
+      contents: { inputs: { item: [item('gtceu:gear', 1)] }, outputs: { item: [item('gtceu:dust', 4)] } },
+    }),
+  },
+  'gtceu:extractor': {
+    'gtceu:extractor/extract_steel_ingot': recipe({
+      category: 'gtceu:extractor_recycling',
+      contents: { inputs: { item: [item('gtceu:steel_ingot', 1)] }, outputs: { fluid: [fluid('gtceu:steel', 144)] } },
+    }),
   },
   'gtceu:steam_turbine': {
     'gtceu:steam_turbine/steam': recipe({
@@ -46,7 +55,7 @@ const dump = {
   },
 };
 const machines = {
-  recipe_types: { 'gtceu:centrifuge': {}, 'gtceu:macerator': {}, 'gtceu:steam_turbine': {} },
+  recipe_types: { 'gtceu:centrifuge': {}, 'gtceu:extractor': {}, 'gtceu:macerator': {}, 'gtceu:steam_turbine': {} },
   machines: {
     'gtceu:lv_centrifuge': { tier: 1, recipe_types: ['gtceu:centrifuge'], multiblock: false },
     'gtceu:me_hatch': { tier: 7, recipe_types: [], multiblock: false },
@@ -58,8 +67,8 @@ describe('buildBundle', () => {
   const data = new GameData(bundle);
   const g = (kind: GoodKind, id: string) => data.good(kind, id)!;
 
-  it('drops recycling and keeps the rest', () => {
-    expect(bundle.recipes.map((r) => r[0])).toEqual(['gtceu:centrifuge/a', 'gtceu:steam_turbine/steam']);
+  it('drops part recycling but keeps material conversions', () => {
+    expect(bundle.recipes.map((r) => r[0])).toEqual(['gtceu:centrifuge/a', 'gtceu:extractor/extract_steel_ingot', 'gtceu:steam_turbine/steam']);
     expect(bundle.machines.map((m) => m.id)).toEqual(['gtceu:lv_centrifuge']);
   });
 

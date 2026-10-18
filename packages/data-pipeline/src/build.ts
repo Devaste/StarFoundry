@@ -96,7 +96,7 @@ export function buildBundle(recipes: DumpRecipes, machines: DumpMachines, option
   const out: RawRecipe[] = [];
   for (const [type, byId] of Object.entries(recipes)) {
     for (const [id, r] of Object.entries(byId)) {
-      if (!options.recycling && r.category.endsWith('_recycling')) continue;
+      if (!options.recycling && r.category.endsWith('_recycling') && !isMaterialConversion(r)) continue;
       const extra: RawRecipeExtra = {};
       const inputs: RawStack[] = [];
       const outputs: RawStack[] = [];
@@ -160,6 +160,16 @@ export function buildNames(bundle: RawBundle, names: DumpNames, locale: string):
     recipeTypes: bundle.recipeTypes.map((id) => names.recipe_types?.[id] ?? null),
     machines: bundle.machines.map((m) => names.machines?.[m.id] ?? null),
   };
+}
+
+/**
+ * Recycling categories also hold the plain material conversions (ingot -> molten metal, block -> dust,
+ * nugget -> fluid); those are real production steps, unlike part recycling, so they stay.
+ */
+const MATERIAL_FORM = /_(ingot|dust|small_dust|tiny_dust|nugget|block)$/;
+function isMaterialConversion(r: DumpRecipe): boolean {
+  const inputs = r.contents.inputs?.item ?? [];
+  return inputs.length === 1 && inputs[0]!.items?.length === 1 && MATERIAL_FORM.test(inputs[0]!.items[0]!);
 }
 
 function tagName(content: unknown, fluid: boolean): string | undefined {
