@@ -30,6 +30,19 @@ describe('planGraph', () => {
     expect(g.edges.every((e) => !e.loop)).toBe(true);
   });
 
+  it('leaves out recipes whose flows are all LP noise', () => {
+    const plan: Plan = {
+      status: 'Optimal',
+      nodes: [node('make', 1, [[0, 1]], [[2, 1]]), node('noise', 2e-6, [[3, 1e-7]], [[4, 1e-7]])],
+      imports: { raw: new Map([[0, 1], [3, 1e-7]]), leaf: new Map(), source: new Map(), producible: new Map() },
+      unreachable: [],
+      byproducts: new Map([[4, 1e-7]]),
+      totalEut: 0,
+      producersOf: new Map(),
+    };
+    expect(planGraph(plan, { 2: 1 }).nodes.map((n) => n.id).sort()).toEqual(['i0', 'r0', 't2']);
+  });
+
   it('marks edges inside a cycle as a loop', () => {
     // a -> b -> a with a target taken out of b
     const plan: Plan = {

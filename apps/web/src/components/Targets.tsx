@@ -50,8 +50,8 @@ export function Targets({ state, onChange, onSelect }: {
         ))}
       </ul>
       <div className="mode-switch" role="group" aria-label={t('mode.title')}>
-        <button type="button" className={state.manual ? '' : 'active'} onClick={() => onChange({ ...state, manual: false })}>{t('mode.plan')}</button>
         <button type="button" className={state.manual ? 'active' : ''} onClick={() => onChange({ ...state, manual: true })}>{t('mode.recipe')}</button>
+        <button type="button" className={state.manual ? '' : 'active'} onClick={() => onChange({ ...state, manual: false })}>{t('mode.plan')}</button>
       </div>
       <p className="muted note">{state.manual ? t('mode.recipeHelp') : t('mode.planHelp')}</p>
       <Adjustments state={state} onChange={onChange} onSelect={onSelect} />

@@ -148,7 +148,7 @@ export function PlanGraph({ plan, targets, onSelect }: { plan: Plan; targets: Ta
           const recipeData: RecipeData = {
             title: c.machine !== undefined ? data.machineName(c.machine) : data.recipeTypeName(node.recipe.type),
             tier: tierName(c.machineTier),
-            machines: t('graph.machines', { n: formatNumber(Math.round(node.machines * 100) / 100), whole: Math.ceil(node.machines - 1e-6) }),
+            machines: t('graph.machines', { n: node.machines < 0.01 ? '<0.01' : formatNumber(Math.round(node.machines * 100) / 100), whole: Math.ceil(node.machines - 1e-6) }),
             eut: `${formatEu(node.eut)} EU/t`,
             detail,
             configured: actions.state.configs[node.recipe.id] !== undefined,
