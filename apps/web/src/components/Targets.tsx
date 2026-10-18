@@ -60,7 +60,7 @@ export function Targets({ state, onChange, onSelect }: {
   );
 }
 
-/** The user's recipe locks, bans and raw resource changes, each removable. */
+/** The user's recipe locks, bans, machine setups and raw resource changes, each removable. */
 function Adjustments({ state, onChange, onSelect }: {
   state: PlanState;
   onChange: (state: PlanState) => void;
@@ -85,6 +85,11 @@ function Adjustments({ state, onChange, onSelect }: {
   }
   for (const id of state.bans) {
     rows.push({ key: `b${id}`, label: <>{t('adjust.ban')}: {recipeLabel(id)}</>, remove: () => onChange({ ...state, bans: state.bans.filter((b) => b !== id) }) });
+  }
+  for (const id of Object.keys(state.configs)) {
+    const configs = { ...state.configs };
+    delete configs[id];
+    rows.push({ key: `c${id}`, label: <>{t('adjust.setup')}: {recipeLabel(id)}</>, remove: () => onChange({ ...state, configs }) });
   }
   for (const g of state.rawAdd) {
     rows.push({ key: `a${g}`, label: <>{t('adjust.raw')}: <GoodLink good={g} onSelect={onSelect} /></>, remove: () => onChange({ ...state, rawAdd: state.rawAdd.filter((x) => x !== g) }) });

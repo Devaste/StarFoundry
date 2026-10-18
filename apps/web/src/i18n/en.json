@@ -40,7 +40,7 @@
     "machineTotal": "Machines",
     "recipes": "Recipes",
     "solvedIn": "solved in {{ms}} ms",
-    "baseNote": "Each recipe runs on its default machine at the max tier with the pack's exact overclock and chance boost. Multiblocks assume one 2A energy hatch and no parallel hatch; blast furnaces the lowest coil that reaches the recipe's heat.",
+    "baseNote": "Each recipe runs on its default machine at the max tier with the pack's exact overclock and chance boost, unless you set it up with “machine…”. Default multiblocks have one 2A energy hatch and no parallel hatch; blast furnaces the lowest coil that reaches the recipe's heat.",
     "tree": "Production tree",
     "table": "Machines",
     "machines": "{{n}} machines",
@@ -65,7 +65,11 @@
     "produce": "produce",
     "ban": "ban",
     "banRecipe": "Ban this recipe from the plan",
-    "lockedHint": "You picked this recipe"
+    "lockedHint": "You picked this recipe",
+    "setup": "machine…",
+    "setupHint": "Set up the machine for this recipe: hatches, parallel hatch, coil",
+    "configError": "setup ignored",
+    "configErrorHint": "Your machine setup cannot run this recipe; the default machine is used"
   },
   "picker": {
     "title": "Recipes for {{name}}",
@@ -87,6 +91,34 @@
     "lock": "Recipe",
     "ban": "Banned",
     "raw": "Bought",
-    "produce": "Produce"
+    "produce": "Produce",
+    "setup": "Machine"
+  },
+  "setup": {
+    "title": "Machine setup",
+    "machine": "Machine",
+    "hatches": "Energy hatches",
+    "count": "Hatch count",
+    "amps": "Amperage per hatch",
+    "voltage": "Hatch voltage",
+    "parallel": "Parallel hatch",
+    "none": "none",
+    "coil": "Coil",
+    "autoCoil": "lowest that works ({{coil}})",
+    "bulking": "Bulking",
+    "time": "Recipe time",
+    "parallels": "Parallels",
+    "perMachine": "One machine makes",
+    "reset": "Back to default",
+    "done": "Done",
+    "cannotRun": "No machine allowed by the plan can run this recipe.",
+    "fallback": "The plan uses the default machine for now.",
+    "approximate": "This machine has bonuses the planner does not model yet (threading, multi smelter, hellforge, …): it is at least this fast.",
+    "error": {
+      "unknown_machine": "This machine is not in the data.",
+      "wrong_machine": "This machine cannot run this recipe.",
+      "insufficient_voltage": "The energy hatches cannot reach the recipe's voltage.",
+      "coil_temperature_too_low": "This coil is too cold for the recipe."
+    }
   }
 }

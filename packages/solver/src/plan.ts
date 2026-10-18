@@ -2,11 +2,11 @@
  * Production plan from targets (SPEC §5.1, fixed config): candidate recipes reachable from the targets,
  * the balance LP over them, and the solved line with machine counts and power.
  *
- * Each recipe runs on its default machine at the plan's max tier with the pack's overclock (effective.ts):
+ * Each recipe runs on the machine the user set up for it, else its default machine at the plan's max tier (effective.ts):
  * one machine does one run per overclocked duration, drawing the overclocked EU/t.
  */
 import { GoodKind, type GameData, type Recipe } from '@starfoundry/data';
-import { effectiveRecipe, type EffectiveRecipe } from './effective.js';
+import { effectiveRecipe, type EffectiveRecipe, type MachineConfig } from './effective.js';
 import type { LpRecipe, ProductionProblem, ProductionSolution } from './index.js';
 
 export interface PlanSettings {
@@ -28,6 +28,8 @@ export interface PlanSettings {
   locks?: Record<number, string>;
   /** recipe ids the user forbade */
   bans?: string[];
+  /** recipe id -> the machine the user set up for it */
+  configs?: Record<string, MachineConfig>;
 }
 
 export interface PlanRequest {
@@ -90,7 +92,7 @@ export function candidateRecipes(data: GameData, request: PlanRequest): Effectiv
     for (const recipe of producersFor(data, good, request.settings)) {
       if (picked.has(recipe.index)) continue;
       // a locked recipe above the plan's tier runs on a machine of its own tier
-      const effective = effectiveRecipe(data, recipe, Math.max(request.settings.maxTier, recipe.tier));
+      const effective = effectiveRecipe(data, recipe, Math.max(request.settings.maxTier, recipe.tier), request.settings.configs?.[recipe.id]);
       if (!effective) continue;
       picked.set(recipe.index, effective);
       for (const s of recipe.inputs) queue.push(s.good);
@@ -133,9 +135,13 @@ export function buildProblem(data: GameData, request: PlanRequest): PlanProblem 
       outputs[key(s.good)] = (outputs[key(s.good)] ?? 0) + s.amount;
       goods.add(s.good);
     }
-    // cost per run: its share of the line's EU/t and machine count
-    const seconds = e.durationTicks / 20;
-    recipes.push({ id: e.recipe.id, inputs, outputs, cost: seconds * (e.eut * euWeight + machineWeight) });
+    // cost per run: its share of the line's EU/t and machine count. A machine the user set up is priced like
+    // the default one (per unit of output), so setting up a machine changes how a recipe runs, not which one is picked.
+    const priced = e.configured ? effectiveRecipe(data, e.recipe, e.maxTier) ?? e : e;
+    const perRun = (x: EffectiveRecipe) => x.outputs.reduce((sum, o) => sum + o.amount, 0) || 1;
+    const seconds = priced.durationTicks / 20;
+    const cost = seconds * (priced.eut * euWeight + machineWeight) * (perRun(e) / perRun(priced));
+    recipes.push({ id: e.recipe.id, inputs, outputs, cost });
   }
 
   // Tags: any member can stand in for the tag, one for one.

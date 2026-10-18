@@ -94,3 +94,14 @@ table.machines .num { text-align: right; white-space: nowrap; font-variant-numer
 .adjustments h4 { margin: 8px 0 4px; }
 .adjustments ul { list-style: none; margin: 0 0 8px; padding: 0; font-size: 0.85rem; }
 .adjustments li { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+.row-action.configured { border-color: var(--accent); color: var(--accent); }
+.badge.approx { margin-left: 4px; }
+.modal.setup { width: min(560px, 100%); }
+.setup-grid { display: grid; gap: 10px; margin: 8px 0; }
+.setup-grid label { display: grid; gap: 4px; }
+.setup-grid fieldset { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 0; }
+.setup-grid fieldset input { width: 4em; }
+.setup-result { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0; }
+.setup-result dt { color: var(--muted); }
+.setup-result dd { margin: 0; }
+.setup-actions { display: flex; gap: 8px; justify-content: flex-end; }

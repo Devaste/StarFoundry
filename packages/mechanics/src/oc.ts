@@ -342,6 +342,17 @@ export function throughputBoosting(r: RecipeState, inputParallelLimit = INT_MAX)
   return inputParallelLimit < 4 ? r : apply(r, { contentMul: 4, durationMul: 1.6, eutMul: 0.95, parallels: 4 });
 }
 
+/** BulkingType.java: name -> [content multiplier, duration multiplier] */
+export const BULKING_TYPES: Record<string, [number, number]> = {
+  '4:3.25': [4, 3.25], '8:6.5': [8, 6.5], '16:13': [16, 13], '32:26': [32, 26], '64:52': [64, 52],
+};
+
+/** StarTRecipeModifiers.bulkingRecipeModifier (:86-110): contents ×N, duration ×D, EU/t unchanged. */
+export function bulking(r: RecipeState, type: string, inputParallelLimit = INT_MAX): RecipeState {
+  const [n, d] = BULKING_TYPES[type]!;
+  return inputParallelLimit >= n ? apply(r, { contentMul: n, durationMul: d, parallels: n }) : r;
+}
+
 // ---------------------------------------------------------------- coil machines
 
 /** coil name -> [temperature, level, energyDiscount, tier] (CoilBlock.java + kubejs coils.js) */
