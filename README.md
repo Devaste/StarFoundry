@@ -36,4 +36,4 @@ The app loads `apps/web/public/data/theta2-hf4/` (`bundle.json` plus `names.en.j
 pnpm bundle <dump dir> apps/web/public/data/theta2-hf4
 ```
 
-Recycling recipes (macerator/arc furnace/extractor) are left out.
+Recycling recipes (macerator/arc furnace/extractor) are left out, except plain material conversions such as ingot → molten metal or block → dust.
