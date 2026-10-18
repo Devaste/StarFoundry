@@ -1,0 +1,22 @@
+{
+  "name": "starfoundry",
+  "private": true,
+  "description": "Production planner for the Star Technology modpack",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "dev": "pnpm --filter @starfoundry/web dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "turbo": "^2.11.9",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

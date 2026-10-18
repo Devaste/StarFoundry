@@ -1,0 +1,8 @@
+{
+  "title": "StarFoundry",
+  "tagline": "Production planner for Star Technology",
+  "unit": "Rate unit",
+  "units": { "s": "per second", "min": "per minute", "h": "per hour" },
+  "language": "Language",
+  "demo": "Solver check: {{plates}} plates/{{unit}} need {{dust}} dust/{{unit}}"
+}
