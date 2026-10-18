@@ -1,35 +1,27 @@
-import type { ProductionSolution } from '@starfoundry/solver';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { goodKey, parseGoodKey } from './components/GoodLink';
+import { ItemSearch } from './components/ItemSearch';
+import { ItemView } from './components/ItemView';
+import { PlanView } from './components/PlanView';
+import { Targets } from './components/Targets';
+import { DataContext, useData, useLoadData } from './data';
 import { LANGUAGES } from './i18n';
-import { RATE_UNITS, toDisplay, type RateUnit } from './units';
-
-const demoProblem = {
-  recipes: [
-    { id: 'ingot', inputs: { dust: 1 }, outputs: { ingot: 1 } },
-    { id: 'plate', inputs: { ingot: 3 }, outputs: { plate: 2 } },
-  ],
-  targets: { plate: 4 },
-  raw: { dust: 1 },
-};
+import { decodePlan, encodePlan, useSolvedPlan, type PlanState } from './plan';
+import { useHash } from './route';
+import { RATE_UNITS, UnitContext, type RateUnit } from './units';
 
 export function App() {
   const { t, i18n } = useTranslation();
   const [unit, setUnit] = useState<RateUnit>('s');
-  const [solution, setSolution] = useState<ProductionSolution>();
-
-  useEffect(() => {
-    const worker = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent<ProductionSolution>) => setSolution(e.data);
-    worker.postMessage(demoProblem);
-    return () => worker.terminate();
-  }, []);
+  const { loaded, error } = useLoadData(i18n.language);
 
   return (
-    <main>
-      <header>
+    <div className="app">
+      <header className="topbar">
         <h1>{t('title')}</h1>
-        <p>{t('tagline')}</p>
+        <span className="muted">{t('tagline')}</span>
+        <span className="spacer" />
         <label>
           {t('unit')}{' '}
           <select value={unit} onChange={(e) => setUnit(e.target.value as RateUnit)}>
@@ -37,7 +29,7 @@ export function App() {
               <option key={u} value={u}>{t(`units.${u}`)}</option>
             ))}
           </select>
-        </label>{' '}
+        </label>
         <label>
           {t('language')}{' '}
           <select value={i18n.language} onChange={(e) => void i18n.changeLanguage(e.target.value)}>
@@ -45,15 +37,61 @@ export function App() {
           </select>
         </label>
       </header>
-      {solution?.status === 'Optimal' && (
-        <p>
-          {t('demo', {
-            plates: toDisplay(demoProblem.targets.plate, unit),
-            dust: toDisplay(solution.imports.dust ?? 0, unit),
-            unit,
-          })}
-        </p>
+      {error && <p className="error">{t('loadError')}: {error}</p>}
+      {!loaded && !error && <p className="muted">{t('loading')}</p>}
+      {loaded && (
+        <DataContext.Provider value={loaded}>
+          <UnitContext.Provider value={unit}>
+            <Planner />
+          </UnitContext.Provider>
+        </DataContext.Provider>
       )}
-    </main>
+    </div>
+  );
+}
+
+function Planner() {
+  const { t } = useTranslation();
+  const { data } = useData();
+  const [params, update] = useHash();
+  const state = decodePlan(data, params);
+  const solved = useSolvedPlan(data, state);
+  const itemKey = params.get('item');
+  const selected = itemKey ? parseGoodKey(data, itemKey) : undefined;
+  const view = params.get('view') === 'item' && selected !== undefined ? 'item' : 'plan';
+
+  const select = (good: number) => update({ item: goodKey(data, good), view: 'item' });
+  const setPlan = (next: PlanState) => update(encodePlan(data, next));
+  const addTarget = (good: number) => {
+    if (!state.targets.some((x) => x.good === good)) {
+      const rate = data.isFluid(good) ? 1000 : 1;
+      update({ ...encodePlan(data, { ...state, targets: [...state.targets, { good, rate }] }), view: 'plan' });
+    } else update({ view: 'plan' });
+  };
+
+  return (
+    <div className="columns">
+      <aside>
+        <Targets state={state} onChange={setPlan} onSelect={select} />
+        <ItemSearch onSelect={select} />
+      </aside>
+      <main>
+        <nav className="tabs main-tabs">
+          <button type="button" className={view === 'plan' ? 'active' : ''} onClick={() => update({ view: 'plan' })}>
+            {t('plan.title')}{solved.solving && ' …'}
+          </button>
+          {selected !== undefined && (
+            <button type="button" className={view === 'item' ? 'active' : ''} onClick={() => update({ view: 'item' })}>
+              {data.goodName(selected)}
+            </button>
+          )}
+        </nav>
+        {view === 'item' && selected !== undefined ? (
+          <ItemView good={selected} onSelect={select} onAddTarget={addTarget} />
+        ) : (
+          <PlanView {...solved} targets={state.targets} onSelect={select} />
+        )}
+      </main>
+    </div>
   );
 }

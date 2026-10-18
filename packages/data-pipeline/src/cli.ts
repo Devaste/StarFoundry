@@ -1,17 +1,34 @@
 #!/usr/bin/env node
 /**
- * Data pipeline entry point (SPEC §4.1, milestone M1).
- * Planned steps: read gtceu_new_recipes.json, gtceu_machines.json and names.<lang>.json,
- * drop recycling, normalize stacks, expand tags, build producers/consumers and rawCost,
- * then write the bundle the web app loads.
+ * Builds the web app's data bundle from a StarDumper dump directory:
+ *   starfoundry-bundle <dump dir> <out dir> [--data-version theta2-hf4]
+ * Reads gtceu_new_recipes.json, gtceu_machines.json, names.en.json and names.ru.json,
+ * writes bundle.json and names.<locale>.json.
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { buildBundle, buildNames, type DumpMachines, type DumpNames, type DumpRecipes } from './build.js';
 
-const dumpDir = process.argv[2];
-if (!dumpDir) {
-  console.error('usage: starfoundry-bundle <dump dir>');
+const args = process.argv.slice(2);
+const flag = args.indexOf('--data-version');
+const dataVersion = flag >= 0 ? args.splice(flag, 2)[1] : undefined;
+const [dumpDir, outDir] = args;
+if (!dumpDir || !outDir) {
+  console.error('usage: starfoundry-bundle <dump dir> <out dir> [--data-version <name>]');
   process.exit(1);
 }
-const names = JSON.parse(readFileSync(join(dumpDir, 'names.en.json'), 'utf8')) as Record<string, Record<string, string>>;
-for (const [section, entries] of Object.entries(names)) console.log(`${section}: ${Object.keys(entries).length} names`);
+
+const read = <T>(file: string) => JSON.parse(readFileSync(join(dumpDir, file), 'utf8')) as T;
+const bundle = buildBundle(read<DumpRecipes>('gtceu_new_recipes.json'), read<DumpMachines>('gtceu_machines.json'), {
+  dataVersion: dataVersion ?? basename(dumpDir),
+});
+
+mkdirSync(outDir, { recursive: true });
+const write = (file: string, value: unknown) => {
+  const json = JSON.stringify(value);
+  writeFileSync(join(outDir, file), json);
+  console.log(`${file}: ${(json.length / 1e6).toFixed(2)} MB`);
+};
+write('bundle.json', bundle);
+for (const locale of ['en', 'ru']) write(`names.${locale}.json`, buildNames(bundle, read<DumpNames>(`names.${locale}.json`), locale));
+console.log(`${bundle.recipes.length} recipes, ${bundle.goods.ids.length} goods, ${bundle.machines.length} machines`);

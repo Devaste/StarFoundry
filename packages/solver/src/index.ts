@@ -92,13 +92,13 @@ export async function solveProduction(problem: ProductionProblem): Promise<Produ
   const value = (name: string) => result.Columns[name]?.Primal ?? 0;
   problem.recipes.forEach((r, n) => {
     const x = value(recipeCols[n]!);
-    if (x > 1e-12) solution.rates[r.id] = x;
+    if (x > 1e-9) solution.rates[r.id] = x;
   });
   items.forEach((id, n) => {
     const imp = value(`i${n}`);
     const exp = value(`e${n}`);
-    if (imp > 1e-12) solution.imports[id] = imp;
-    if (exp > 1e-12) solution.surplus[id] = exp;
+    if (imp > 1e-9) solution.imports[id] = imp;
+    if (exp > 1e-9) solution.surplus[id] = exp;
     const row = result.Rows[n];
     if (row && 'Dual' in row) solution.itemPrices[id] = row.Dual;
   });
@@ -108,3 +108,4 @@ export async function solveProduction(problem: ProductionProblem): Promise<Produ
 function signed(a: number): string {
   return a < 0 ? `- ${-a}` : `+ ${a}`;
 }
+export * from './plan.js';

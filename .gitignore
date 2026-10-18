@@ -3,5 +3,3 @@ dist
 .turbo
 coverage
 *.log
-# generated data bundle (built from the StarDumper dump)
-apps/web/public/data
