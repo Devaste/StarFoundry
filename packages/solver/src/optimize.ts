@@ -74,6 +74,8 @@ export interface Optimization {
   batch?: WholeBatch | undefined;
   /** recipes that would make the line better by the same measure, best first */
   alternatives: Alternative[];
+  /** the line as solved with the optimized setups */
+  plan: Plan;
 }
 
 const EPS = 1e-9;
@@ -234,7 +236,7 @@ export async function optimizePlan(data: GameData, request: PlanRequest, solve: 
   }
   alternatives.sort((a, b) => (betterScore(a.score, b.score) ? -1 : betterScore(b.score, a.score) ? 1 : 0));
   onProgress?.(1, 1);
-  return { before: start.score, after: best.score, changes, configs: applied, rates, batch, alternatives };
+  return { before: start.score, after: best.score, changes, configs: applied, rates, batch, alternatives, plan: best.plan };
 }
 
 /** Takes no more from the factory and leaves no more byproducts (1% slack): no trading one for the other. */

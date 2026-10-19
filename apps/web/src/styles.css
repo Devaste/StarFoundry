@@ -149,3 +149,7 @@ ul.changes button.small, .optimize-body button.small { margin-left: 8px; font-si
 .optimize-body .delta { color: var(--accent); }
 .optimize-body details.batch { margin-top: 8px; } .optimize-body details.batch summary { cursor: pointer; }
 .idle { color: var(--idle); }
+.exact-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.exact-result p { margin: 4px 0; }
+.optimize-body .disclaimer { color: var(--idle); }
+.exact-controls label { display: flex; align-items: center; gap: 8px; }
