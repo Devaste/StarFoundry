@@ -7,7 +7,7 @@ import { planRequest, solveMipInWorker, useDefaultRaw } from '../plan';
 import { usePlanActions } from '../planActions';
 import { formatRate, useUnit } from '../units';
 
-const LEVELS = [1, 0.99, 0.97, 0.95, 0.9];
+const LEVELS = [0.9, 0.95, 0.97, 0.99, 1];
 /** seconds the integer search may take */
 const TIME_LIMIT = 30;
 
@@ -69,12 +69,19 @@ export function ExactLine({ result }: { result: Optimization }) {
     <>
       <h4>{t('optimize.exact')}</h4>
       <p className="muted">{t('optimize.exactHelp')}</p>
+      <p className="disclaimer">{t('optimize.exactWarning')}</p>
       <div className="exact-controls">
         <label>
-          {t('optimize.busyAt')}{' '}
-          <select value={busy} onChange={(e) => setBusy(Number(e.target.value))} disabled={searching}>
-            {LEVELS.map((l) => <option key={l} value={l}>{formatPercent(l)}</option>)}
-          </select>
+          {t('optimize.busyAt')} <strong>{formatPercent(busy)}</strong>
+          <input
+            type="range"
+            min={0}
+            max={LEVELS.length - 1}
+            step={1}
+            value={LEVELS.indexOf(busy)}
+            onChange={(e) => setBusy(LEVELS[Number(e.target.value)]!)}
+            disabled={searching}
+          />
         </label>
         <button type="button" className="small" onClick={find} disabled={searching}>
           {searching ? t('optimize.searching', { s: TIME_LIMIT }) : t('optimize.find')}

@@ -79,7 +79,7 @@
     "leaves": "From your factory",
     "unreachable": "{{names}}: no recipe chain at the max tier starts from the raw resources. Raise the max tier, buy an input raw, or switch to recipe mode.",
     "loadTotal": "Busy",
-    "idle": "Busy {{load}} of the time: the inputs arrive slower than the machines can work them, so they wait (starve), or the line's outputs back up if its inputs come faster than planned. Use a perfect ratio from Optimize or change the setup to get closer to 100%."
+    "idle": "Busy {{load}} of the time: it waits for its inputs the rest of the time. The line still balances, so nothing backs up; Optimize's full-time line can get closer to 100% by scaling the line up."
   },
   "picker": {
     "title": "Recipes for {{name}}",
@@ -156,7 +156,7 @@
   "optimize": {
     "button": "Optimize",
     "title": "Optimize the line",
-    "help": "Keeps what the line makes and the recipes you picked. Looks for machine voltages and coils that take less from the factory, leave fewer byproducts, need fewer machines and then less power, in that order. Coils are offered up to the one a tier below the max tier (HSS-G at IV).",
+    "help": "Keeps what the line makes and the recipes you picked. Looks for machine voltages and coils that take less from the factory, leave fewer byproducts, need fewer machines and then less power, in that order. Coils are offered up to the one a tier below the max tier (HSS-G at IV). The line stays balanced: every item made inside is used as fast as it is made and every recipe has enough whole machines for what reaches it, so nothing backs up and nothing runs dry; a machine below 100% only waits for its next input.",
     "running": "Optimizing… {{n}}%",
     "before": "Now",
     "after": "Optimized",
@@ -179,7 +179,7 @@
     "runs": "{{n}} runs",
     "load": "Machines busy",
     "exact": "Full-time line",
-    "exactHelp": "Whole machines that all work the whole time: every item made inside the line is used up as fast as it is made, so nothing backs up and no machine waits for its inputs. Ticks are whole and chances are fractions, so a line that is exactly full usually needs a much bigger line; a little waiting (99%) makes it far smaller. The search takes up to half a minute.",
+    "exactHelp": "Whole machines that all work (nearly) the whole time: every item made inside the line is used up as fast as it is made and no machine waits. The search takes up to half a minute.",
     "busyAt": "Every machine busy at least",
     "find": "Find the line",
     "searching": "Searching (up to {{s}} s)…",
@@ -188,6 +188,7 @@
     "makes": "Makes:",
     "exactNone": "No line where every machine is busy {{busy}} of the time was found within 256 machines per recipe and {{s}} s.",
     "exactLimit": "{{name}} alone needs the line at least {{scale}}× bigger: even one machine on its slowest setup works faster than the line feeds it.",
-    "useLine": "Use this line"
+    "useLine": "Use this line",
+    "exactWarning": "Experimental. This scales production up: durations are whole ticks and chances are fractions, so keeping every machine busy usually needs a line several times bigger than your targets (the PlatLine at 99% runs at about 25×). Each step of the slider down makes the line smaller."
   }
 }
