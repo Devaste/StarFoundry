@@ -1,5 +1,5 @@
 import type { GameData } from '@starfoundry/data';
-import { buildProblem, defaultRaw, readPlan, type MachineConfig, type Plan, type PlanRequest, type ProductionSolution } from '@starfoundry/solver';
+import { buildProblem, defaultRaw, readPlan, type MachineConfig, type Plan, type PlanRequest, type ProductionProblem, type ProductionSolution } from '@starfoundry/solver';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { goodKey, parseGoodKey } from './components/GoodLink';
 
@@ -22,10 +22,10 @@ export interface PlanState {
   /** recipe id -> the machine the user set up for it */
   configs: Record<string, MachineConfig>;
   /**
-   * recipe mode (the default): only goods the user picked a recipe for are made, the rest come from the factory
-   * the line is built into; off (plan mode) the solver builds the whole line from water and lava
+   * always on: only goods the user picked a recipe for are made, the rest come from the factory the line is built
+   * into (the solver's full-chain mode is not offered: lines are built into an existing factory)
    */
-  manual: boolean;
+  manual: true;
 }
 
 export const emptyPlan = (): PlanState => ({ targets: [], maxTier: DEFAULT_MAX_TIER, locks: {}, bans: [], rawAdd: [], rawRemove: [], configs: {}, manual: true });
@@ -38,7 +38,7 @@ const split = (value: string | null) => (value ? value.split('~') : []);
 /**
  * Plan <-> URL hash params, so a plan is a shareable link:
  * t=item:gtceu:x@0.5~fluid:gtceu:y@2, tier=5, lock=item:gtceu:x>recipe/id, ban=recipe/id, raw=+item:a~-fluid:b,
- * cfg=recipe/id>machine:id,hatchTier,amps,count,parallel,coil,bulking (empty fields use the default), mode=plan (full chain; recipe mode is the default)
+ * cfg=recipe/id>machine:id,hatchTier,amps,count,parallel,coil,bulking (empty fields use the default)
  */
 export function encodePlan(data: GameData, plan: PlanState): Record<string, string | undefined> {
   return {
@@ -48,7 +48,6 @@ export function encodePlan(data: GameData, plan: PlanState): Record<string, stri
     ban: list(plan.bans),
     raw: list([...plan.rawAdd.map((g) => `+${goodKey(data, g)}`), ...plan.rawRemove.map((g) => `-${goodKey(data, g)}`)]),
     cfg: list(Object.entries(plan.configs).map(([recipe, c]) => `${recipe}>${encodeConfig(c)}`)),
-    mode: plan.manual ? undefined : 'plan',
   };
 }
 
@@ -76,7 +75,7 @@ export function decodePlan(data: GameData, params: URLSearchParams): PlanState {
     if (good !== undefined && rate > 0) targets.push({ good, rate });
   }
   const tier = Number(params.get('tier') ?? DEFAULT_MAX_TIER);
-  const plan: PlanState = { ...emptyPlan(), targets, maxTier: Number.isInteger(tier) ? tier : DEFAULT_MAX_TIER, manual: params.get('mode') !== 'plan' };
+  const plan: PlanState = { ...emptyPlan(), targets, maxTier: Number.isInteger(tier) ? tier : DEFAULT_MAX_TIER, manual: true };
   for (const part of split(params.get('lock'))) {
     const at = part.indexOf('>');
     const good = parseGoodKey(data, part.slice(0, at));
@@ -104,50 +103,64 @@ export function planRaw(defaults: number[], state: PlanState): number[] {
 
 type Reply = { id: number; solution?: ProductionSolution; error?: string };
 
-/** Solves the plan in the solver worker whenever targets or settings change. */
+let worker: Worker | undefined;
+let lastId = 0;
+const pending = new Map<number, { resolve: (s: ProductionSolution) => void; reject: (e: Error) => void }>();
+
+/** Solves one LP in the solver worker (one worker for the whole page). */
+export function solveInWorker(problem: ProductionProblem): Promise<ProductionSolution> {
+  if (!worker) {
+    worker = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e: MessageEvent<Reply>) => {
+      const job = pending.get(e.data.id);
+      if (!job) return;
+      pending.delete(e.data.id);
+      if (e.data.error || !e.data.solution) job.reject(new Error(e.data.error ?? 'no solution'));
+      else job.resolve(e.data.solution);
+    };
+  }
+  const id = ++lastId;
+  const { recipes, targets, raw } = problem; // the solver needs only the LP itself
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    worker!.postMessage({ id, problem: { recipes, targets, raw } });
+  });
+}
+
 export function useDefaultRaw(data: GameData) {
   return useMemo(() => defaultRaw(data), [data]);
 }
 
+/** What the solver is asked for the current plan state. */
+export function planRequest(state: PlanState, defaultRawGoods: number[]): PlanRequest {
+  return {
+    targets: Object.fromEntries(state.targets.map((t) => [t.good, t.rate])),
+    // goods the user marked raw are supplied from outside at no cost, so the solver never makes them
+    settings: { maxTier: state.maxTier, raw: planRaw(defaultRawGoods, state), supplied: state.rawAdd, locks: state.locks, bans: state.bans, configs: state.configs, manual: state.manual },
+  };
+}
+
+/** Solves the plan in the solver worker whenever targets or settings change. */
 export function useSolvedPlan(data: GameData, state: PlanState): { plan?: Plan; solving: boolean; error?: string; ms?: number } {
-  const worker = useRef<Worker>(undefined);
   const counter = useRef(0);
   const raw = useDefaultRaw(data);
   const [result, setResult] = useState<{ plan?: Plan; solving: boolean; error?: string; ms?: number }>({ solving: false });
 
-  useEffect(() => {
-    const w = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
-    worker.current = w;
-    return () => w.terminate();
-  }, []);
-
   const key = JSON.stringify(state);
   useEffect(() => {
-    const w = worker.current;
-    if (!w || !state.targets.length) {
+    if (!state.targets.length) {
       setResult({ solving: false });
       return;
     }
     const id = ++counter.current;
     const started = performance.now();
-    const request: PlanRequest = {
-      targets: Object.fromEntries(state.targets.map((t) => [t.good, t.rate])),
-      // goods the user marked raw are supplied from outside at no cost, so the solver never makes them
-      settings: { maxTier: state.maxTier, raw: planRaw(raw, state), supplied: state.rawAdd, locks: state.locks, bans: state.bans, configs: state.configs, manual: state.manual },
-    };
+    const request = planRequest(state, raw);
     const problem = buildProblem(data, request);
     setResult((r) => ({ ...r, solving: true }));
-    const onMessage = (e: MessageEvent<Reply>) => {
-      if (e.data.id !== id) return;
-      w.removeEventListener('message', onMessage);
-      const ms = Math.round(performance.now() - started);
-      if (e.data.error || !e.data.solution) setResult({ solving: false, error: e.data.error ?? 'no solution' });
-      else setResult({ plan: readPlan(data, request, problem, e.data.solution), solving: false, ms });
-    };
-    w.addEventListener('message', onMessage);
-    const { recipes, targets, raw: rawCosts } = problem; // the solver needs only the LP itself
-    w.postMessage({ id, problem: { recipes, targets, raw: rawCosts } });
-    return () => w.removeEventListener('message', onMessage);
+    solveInWorker(problem).then(
+      (solution) => id === counter.current && setResult({ plan: readPlan(data, request, problem, solution), solving: false, ms: Math.round(performance.now() - started) }),
+      (e: unknown) => id === counter.current && setResult({ solving: false, error: String(e) }),
+    );
   }, [data, raw, key]);
 
   return result;

@@ -111,3 +111,4 @@ function signed(a: number): string {
 export * from './effective.js';
 export * from './graph.js';
 export * from './plan.js';
+export * from './optimize.js';
