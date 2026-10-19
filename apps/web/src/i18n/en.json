@@ -47,9 +47,9 @@
     "baseNote": "Each recipe runs on its default machine at the max tier with the pack's exact overclock and chance boost, unless you set it up with “machine…”. Default multiblocks have one 2A energy hatch and no parallel hatch; blast furnaces the lowest coil that reaches the recipe's heat.",
     "tree": "Production tree",
     "table": "Machines",
-    "machines": "{{n}} machines",
+    "machines": "{{n}} machines · {{load}} busy",
     "loop": "loop",
-    "machineCol": "Machines",
+    "machineCol": "Machines (busy)",
     "outputs": "Outputs",
     "raw": "Raw resources",
     "sources": "Inputs with no recipe",
@@ -77,7 +77,9 @@
     "configErrorHint": "Your machine setup cannot run this recipe; the default machine is used",
     "graph": "Graph",
     "leaves": "From your factory",
-    "unreachable": "{{names}}: no recipe chain at the max tier starts from the raw resources. Raise the max tier, buy an input raw, or switch to recipe mode."
+    "unreachable": "{{names}}: no recipe chain at the max tier starts from the raw resources. Raise the max tier, buy an input raw, or switch to recipe mode.",
+    "loadTotal": "Busy",
+    "idle": "Busy {{load}} of the time: the inputs arrive slower than the machines can work them, so they wait (starve), or the line's outputs back up if its inputs come faster than planned. Use a perfect ratio from Optimize or change the setup to get closer to 100%."
   },
   "picker": {
     "title": "Recipes for {{name}}",
@@ -131,7 +133,7 @@
     }
   },
   "graph": {
-    "machines": "{{n}} machines ({{whole}})",
+    "machines": "{{n}} machines · {{load}} busy",
     "layout": "Laying out the graph…",
     "help": "Click a machine to set it up, an input or shared item to pick its recipe, an output to open the item. Orange arrows run in a loop.",
     "kind": {
@@ -174,6 +176,7 @@
     "noAlternatives": "No other recipe makes the line better.",
     "use": "Use",
     "batch": "Whole crafts: feed {{amount}} {{name}} and every recipe with items runs a whole number of times",
-    "runs": "{{n}} runs"
+    "runs": "{{n}} runs",
+    "load": "Machines busy"
   }
 }

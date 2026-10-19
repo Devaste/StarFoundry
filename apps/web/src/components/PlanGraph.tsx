@@ -9,7 +9,7 @@ import elkWorkerUrl from 'elkjs/lib/elk-worker.min.js?url';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
-import { formatEu, formatNumber, tierName } from '../format';
+import { formatEu, formatNumber, formatPercent, machineLoad, tierName, wholeMachines } from '../format';
 import type { Target } from '../plan';
 import { usePlanActions } from '../planActions';
 import { formatRate, useUnit } from '../units';
@@ -21,7 +21,10 @@ let elk: InstanceType<typeof ELK> | undefined;
 /** ELK runs in its own worker so a big layout never blocks the page. */
 const getElk = () => (elk ??= new ELK({ workerFactory: () => new Worker(elkWorkerUrl) }));
 
-type RecipeData = { title: string; tier: string; machines: string; eut: string; detail: string; configured: boolean; approximate: boolean };
+/** below this share of the time a machine waits on its inputs */
+const FULL = 0.999;
+
+type RecipeData = { title: string; tier: string; machines: string; idle: string; eut: string; detail: string; configured: boolean; approximate: boolean };
 type ItemData = { name: string; rate: string; kind: 'raw' | 'leaf' | 'source' | 'producible' | 'target' | 'byproduct' | 'hub'; label: string; fluid: boolean };
 type FlowData = { points: { x: number; y: number }[]; label: string; labelAt?: { x: number; y: number }; loop: boolean; fluid: boolean };
 
@@ -30,7 +33,7 @@ function RecipeNode({ data }: NodeProps<Node<RecipeData>>) {
     <div className={`graph-node recipe${data.configured ? ' configured' : ''}`} title={data.title}>
       <Handle type="target" position={Position.Top} />
       <div className="graph-title"><strong>{data.title}</strong> <span className="tier">{data.tier}</span>{data.approximate && ' ≈'}</div>
-      <div>{data.machines} <span className="muted">· {data.eut}</span></div>
+      <div><span className={data.idle ? 'idle' : ''} title={data.idle || undefined}>{data.machines}</span> <span className="muted">· {data.eut}</span></div>
       {data.detail && <div className="muted graph-detail">{data.detail}</div>}
       <Handle type="source" position={Position.Bottom} />
     </div>
@@ -148,7 +151,8 @@ export function PlanGraph({ plan, targets, onSelect }: { plan: Plan; targets: Ta
           const recipeData: RecipeData = {
             title: c.machine !== undefined ? data.machineName(c.machine) : data.recipeTypeName(node.recipe.type),
             tier: tierName(c.machineTier),
-            machines: t('graph.machines', { n: node.machines < 0.01 ? '<0.01' : formatNumber(Math.round(node.machines * 100) / 100), whole: Math.ceil(node.machines - 1e-6) }),
+            machines: t('graph.machines', { n: wholeMachines(node.machines), load: formatPercent(machineLoad(node.machines)) }),
+            idle: machineLoad(node.machines) < FULL ? t('plan.idle', { load: formatPercent(machineLoad(node.machines)) }) : '',
             eut: `${formatEu(node.eut)} EU/t`,
             detail,
             configured: actions.state.configs[node.recipe.id] !== undefined,

@@ -327,7 +327,8 @@ export function readPlan(data: GameData, request: PlanRequest, problem: PlanProb
   }
   for (const [good, amount] of Object.entries(solution.surplus)) {
     const g = Number(good);
-    if (amount > 1e-9 && !(g in request.targets)) plan.byproducts.set(g, amount);
+    // below 1e-5/s is noise from targets rounded in the URL (1/3 -> 0.333333), not a byproduct
+    if (amount > 1e-5 && !(g in request.targets)) plan.byproducts.set(g, amount);
   }
   return plan;
 }

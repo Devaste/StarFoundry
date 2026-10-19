@@ -54,11 +54,14 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
     const main = e.recipe.outputs[0];
     return `${data.recipeTypeName(e.recipe.type)}${main ? ` (${data.goodName(main.good)})` : ''}`;
   };
-  const perSecond = (x: number) => formatRate(x, unit, false);
+  // items and fluids apart: 1.5/s + 1,805 mB/s, never one sum of both
+  const flow = (items: number, fluid: number) =>
+    [items > 0 || fluid <= 0 ? formatRate(items, unit, false) : '', fluid > 0 ? formatRate(fluid, unit, true) : ''].filter(Boolean).join(' + ');
   const rows: [string, (s: PlanScore) => string][] = [
-    [t('optimize.inputs'), (s) => perSecond(s.inputs)],
-    [t('optimize.byproducts'), (s) => perSecond(s.byproducts)],
+    [t('optimize.inputs'), (s) => flow(s.inputItems, s.inputFluid)],
+    [t('optimize.byproducts'), (s) => flow(s.byproductItems, s.byproductFluid)],
     [t('optimize.machines'), (s) => formatNumber(s.machines)],
+    [t('optimize.load'), (s) => formatPercent(s.machines ? s.exactMachines / s.machines : 0)],
     [t('optimize.power'), (s) => `${formatEu(s.eut)} EU/t`],
   ];
 
