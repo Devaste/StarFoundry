@@ -146,13 +146,32 @@
     "byproducts": "Show byproducts"
   },
   "mode": {
-    "title": "Mode",
-    "plan": "Plan",
-    "recipe": "Recipe",
-    "planHelp": "The solver builds the whole line down to water, lava and the rock breaker.",
     "recipeHelp": "You build the line into your factory: “recipe…” on an item expands it with the recipe you pick, “machine…” sets the machine and its tier. Items you do not expand come from your factory."
   },
   "tag": {
     "less": "less"
+  },
+  "optimize": {
+    "button": "Optimize",
+    "title": "Optimize the line",
+    "help": "Keeps what the line makes and the recipes you picked. Looks for machine voltages and coils that take less from the factory, leave fewer byproducts, need fewer machines and then less power, in that order. Coils are offered up to the one a tier below the max tier (HSS-G at IV).",
+    "running": "Optimizing… {{n}}%",
+    "before": "Now",
+    "after": "Optimized",
+    "inputs": "From the factory",
+    "byproducts": "Byproducts",
+    "machines": "Machines to build",
+    "power": "Power",
+    "setups": "Machine setups",
+    "noSetups": "Every machine already runs at its best voltage and coil.",
+    "apply": "Apply these setups",
+    "ratio": "Perfect ratio",
+    "perfect": "Every machine already works full time.",
+    "ratioHelp": "Output rates nearest to yours at which the built machines spend more of their time working (with the setups above):",
+    "busy": "{{busy}} busy, {{n}} machines",
+    "useRate": "Use this rate",
+    "alternatives": "Other recipes",
+    "noAlternatives": "No other recipe makes the line better.",
+    "use": "Use"
   }
 }

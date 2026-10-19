@@ -103,6 +103,38 @@ export function machineOptions(data: GameData, recipe: Recipe): number[] {
   });
 }
 
+/**
+ * Setups the optimizer may move a recipe to without changing what is built: the same kind of machine (single
+ * blocks of every allowed tier, or the same multiblock with its energy hatch at every allowed tier and every coil
+ * the plan's tier can make), keeping the parallel hatch and bulking. A coil's own tier must be below the plan's
+ * (HSS-G at IV, naquadah at LuV, …), as its materials come a tier earlier.
+ */
+export function configOptions(data: GameData, recipe: Recipe, maxTier: number, current: EffectiveRecipe): MachineConfig[] {
+  if (recipe.eut === 0) return [];
+  const recipeTier = tierByVoltage(recipe.eut);
+  if (!current.multiblock) {
+    return machineOptions(data, recipe)
+      .filter((m) => !data.machines[m]!.multiblock && data.machines[m]!.tier <= maxTier)
+      .map((m) => ({ machine: data.machines[m]!.id }));
+  }
+  const machine = current.machine === undefined ? undefined : data.machines[current.machine]!.id;
+  const { coil } = machineFeatures(machine);
+  const coils = coil ? Object.keys(COILS).filter((c) => COILS[c]![3] <= maxTier - 1) : [undefined];
+  const options: MachineConfig[] = [];
+  for (let tier = Math.max(1, recipeTier); tier <= maxTier; tier++) {
+    for (const c of coils) {
+      options.push({
+        ...(machine === undefined ? {} : { machine }),
+        hatch: { tier, amps: current.hatch?.amps ?? 2, count: current.hatch?.count ?? 1 },
+        ...(current.parallel ? { parallel: current.parallel } : {}),
+        ...(c ? { coil: c } : {}),
+        ...(current.bulking ? { bulking: current.bulking } : {}),
+      });
+    }
+  }
+  return options;
+}
+
 /** Lowest coil that runs the recipe on this machine (blast furnaces need the recipe's heat). */
 export function defaultCoil(recipe: Recipe, modifiers: Modifier[], tier: number): string | undefined {
   if (!modifiers.includes('EBF_OVERCLOCK')) return modifiers.some((m) => COIL_MODIFIERS.has(m)) ? 'cupronickel' : undefined;

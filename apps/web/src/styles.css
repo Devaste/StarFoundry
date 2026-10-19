@@ -132,9 +132,17 @@ table.machines .num { text-align: right; white-space: nowrap; font-variant-numer
 .graph-node.item.hub { border-style: dashed; }
 .badge.leaf { color: #7c3aed; border-color: #7c3aed; }
 .graph-node.item.leaf { border-color: #7c3aed; }
-.mode-switch { display: inline-flex; margin: 8px 0 4px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.mode-switch button { border: 0; border-radius: 0; padding: 4px 14px; background: transparent; color: inherit; cursor: pointer; }
-.mode-switch button.active { background: var(--accent); color: white; }
 .card-actions button.primary { background: var(--accent); color: white; border-color: var(--accent); margin: 0; }
 h3 button.small { font-size: 0.8rem; font-weight: normal; padding: 2px 8px; margin-left: 8px; border: 1px solid var(--line); border-radius: 4px; background: Canvas; color: CanvasText; cursor: pointer; vertical-align: middle; }
 .tag-members button.link.more { color: var(--accent); margin-left: 6px; font-size: 0.85em; text-decoration: underline dotted; }
+.summary .optimize-button { margin: 0 0 0 auto; align-self: center; }
+.modal.optimize { width: min(760px, 100%); }
+.optimize-body { overflow: auto; }
+.optimize-body h4 { margin: 14px 0 6px; }
+table.score { border-collapse: collapse; }
+table.score th, table.score td { padding: 2px 12px 2px 0; text-align: left; }
+table.score td.changed { color: var(--accent); font-weight: 600; }
+ul.changes { margin: 0; padding-left: 18px; }
+ul.changes li { margin: 4px 0; }
+ul.changes button.small, .optimize-body button.small { margin-left: 8px; font-size: 0.8rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px; background: Canvas; color: CanvasText; cursor: pointer; }
+.optimize-body .delta { color: var(--accent); }

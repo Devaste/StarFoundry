@@ -28,7 +28,7 @@ export function RecipePicker({ good, onClose, onSelect }: { good: number; onClos
         </header>
         <p className="muted">{t('picker.help')}</p>
         {locked && (
-          <button type="button" onClick={() => lockRecipe(actions, good, undefined)}>{state.manual ? t('picker.unexpand') : t('picker.auto')}</button>
+          <button type="button" onClick={() => lockRecipe(actions, good, undefined)}>{t('picker.unexpand')}</button>
         )}
         <div className="picker-list">
           {recipes.map((r) => {

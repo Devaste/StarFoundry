@@ -7,6 +7,7 @@ import type { Target } from '../plan';
 import { formatRate, useUnit } from '../units';
 import { toggleBan, toggleRaw, usePlanActions } from '../planActions';
 import { GoodLink } from './GoodLink';
+import { OptimizePanel } from './OptimizePanel';
 import { PlanGraph } from './PlanGraph';
 
 /** rates below this (per second) are LP noise and hidden */
@@ -169,6 +170,7 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
   const { t } = useTranslation();
   const { data } = useData();
   const [tab, setTab] = useState<'graph' | 'tree' | 'machines'>('graph');
+  const [optimizing, setOptimizing] = useState(false);
 
   if (!targets.length) return <p className="muted">{t('plan.empty')}</p>;
   if (error) return <p className="error">{error}</p>;
@@ -191,7 +193,9 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
           ))}
         </div>
         {ms !== undefined && <small className="muted">{t('plan.solvedIn', { ms })}</small>}
+        <button type="button" className="primary optimize-button" onClick={() => setOptimizing(true)}>{t('optimize.button')}</button>
       </div>
+      {optimizing && <OptimizePanel onClose={() => setOptimizing(false)} />}
       {plan.unreachable.length > 0 && (
         <p className="error">{t('plan.unreachable', { names: plan.unreachable.map((g) => data.goodName(g)).join(', ') })}</p>
       )}
