@@ -46,6 +46,14 @@ describe('optimizePlan', () => {
   });
 });
 
+describe('wholeBatch', () => {
+  it('counts the batch of input in which every recipe runs whole', async () => {
+    // 1 plate/s on the bender: 1 ingot per run, so one ingot is a whole batch
+    const o = await optimize(1);
+    expect(o.batch).toMatchObject({ good: 0, amount: 1 });
+  });
+});
+
 describe('perfectRates', () => {
   it('finds the nearest rates where every machine works full time', () => {
     const rates = perfectRates([0.5, 1.5]);

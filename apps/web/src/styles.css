@@ -146,3 +146,4 @@ ul.changes { margin: 0; padding-left: 18px; }
 ul.changes li { margin: 4px 0; }
 ul.changes button.small, .optimize-body button.small { margin-left: 8px; font-size: 0.8rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px; background: Canvas; color: CanvasText; cursor: pointer; }
 .optimize-body .delta { color: var(--accent); }
+.optimize-body details.batch { margin-top: 8px; } .optimize-body details.batch summary { cursor: pointer; }

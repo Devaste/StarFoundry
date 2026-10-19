@@ -1,4 +1,4 @@
-import { optimizePlan, type EffectiveRecipe, type Optimization, type PlanScore } from '@starfoundry/solver';
+import { optimizePlan, type EffectiveRecipe, type Optimization, type PlanScore, type RateOption } from '@starfoundry/solver';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
@@ -6,6 +6,11 @@ import { formatEu, formatNumber, formatPercent, tierName } from '../format';
 import { planRequest, solveInWorker, useDefaultRaw } from '../plan';
 import { lockRecipe, usePlanActions } from '../planActions';
 import { formatRate, useUnit } from '../units';
+
+/** The current rate, the next few closer to full time and the best one. */
+function shownRates(rates: RateOption[]): RateOption[] {
+  return rates.length <= 5 ? rates : [...rates.slice(0, 4), rates.at(-1)!];
+}
 
 /**
  * Optimize (perfect ratio) for the built line: better machine setups, the rates at which every machine runs
@@ -44,6 +49,11 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
 
   const setup = (e: EffectiveRecipe) =>
     [e.machine !== undefined ? data.machineName(e.machine) : '', e.multiblock && tierName(e.machineTier), e.coil].filter(Boolean).join(', ');
+  // the recipe by what it makes: "Large Chemical Reactor (Ruthenium Dust)"
+  const recipeLabel = (e: EffectiveRecipe) => {
+    const main = e.recipe.outputs[0];
+    return `${data.recipeTypeName(e.recipe.type)}${main ? ` (${data.goodName(main.good)})` : ''}`;
+  };
   const perSecond = (x: number) => formatRate(x, unit, false);
   const rows: [string, (s: PlanScore) => string][] = [
     [t('optimize.inputs'), (s) => perSecond(s.inputs)],
@@ -85,7 +95,7 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
                 <ul className="changes">
                   {result.changes.map((c) => (
                     <li key={c.recipe}>
-                      <strong>{data.recipeTypeName(c.to.recipe.type)}</strong>: {setup(c.from)} → <strong>{setup(c.to)}</strong>
+                      <strong>{recipeLabel(c.to)}</strong>: {setup(c.from)} → <strong>{setup(c.to)}</strong>
                     </li>
                   ))}
                 </ul>
@@ -102,7 +112,7 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
               <>
                 <p className="muted">{t('optimize.ratioHelp')}</p>
                 <ul className="changes">
-                  {result.rates.map((r) => (
+                  {shownRates(result.rates).map((r) => (
                     <li key={r.scale}>
                       {state.targets.map((x) => `${formatRate(x.rate * r.scale, unit, data.isFluid(x.good))} ${data.goodName(x.good)}`).join(', ')}
                       {' — '}
@@ -120,6 +130,17 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </ul>
               </>
+            )}
+
+            {result.batch && (
+              <details className="batch">
+                <summary>{t('optimize.batch', { amount: formatNumber(result.batch.amount), name: data.goodName(result.batch.good) })}</summary>
+                <ul className="changes">
+                  {result.batch.runs.map((r) => (
+                    <li key={r.recipe}>{data.recipeTypeName(data.recipe(r.recipe)!.type)}: {t('optimize.runs', { n: formatNumber(r.runs) })} <small className="id">{r.recipe}</small></li>
+                  ))}
+                </ul>
+              </details>
             )}
 
             <h4>{t('optimize.alternatives')}</h4>
