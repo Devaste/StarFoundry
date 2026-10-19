@@ -7,6 +7,12 @@ export const formatNumber = (x: number) => numberFormat.format(x);
 /** 0.111111 -> "11.11%" */
 export const formatPercent = (x: number) => `${formatNumber(Math.round(x * 10000) / 100)}%`;
 
+/** Machines to build for a fractional count: 2.1 needs 3 (counts this close above a whole number are rounding noise). */
+export const wholeMachines = (m: number) => (m <= 1e-6 ? 0 : Math.ceil(m - 1e-6));
+
+/** Share of the built machines' time spent working. */
+export const machineLoad = (m: number) => (wholeMachines(m) ? m / wholeMachines(m) : 0);
+
 export const formatSeconds = (ticks: number) => `${formatNumber(ticks / 20)} s`;
 
 export const tierName = (tier: number) => TIER_NAMES[tier] ?? `T${tier}`;

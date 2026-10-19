@@ -2,7 +2,7 @@ import { IMPORT_KINDS, type Plan, type PlanNode } from '@starfoundry/solver';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '../data';
-import { formatEu, formatNumber, tierName } from '../format';
+import { formatEu, formatNumber, formatPercent, machineLoad, tierName, wholeMachines } from '../format';
 import type { Target } from '../plan';
 import { formatRate, useUnit } from '../units';
 import { toggleBan, toggleRaw, usePlanActions } from '../planActions';
@@ -132,7 +132,7 @@ function ItemBranch({ plan, good, rate, depth, path, onSelect }: {
                 <div className="tree-row recipe-row">
                   <span className="toggle" />
                   <MachineLabel node={node} />
-                  <span>{t('plan.machines', { n: formatNumber(node.machines * share) })}</span>
+                  <span>{t('plan.machines', { n: wholeMachines(node.machines), load: formatPercent(machineLoad(node.machines)) })}</span>
                   <span className="muted">{formatEu(node.eut * share)} EU/t</span>
                   {loop && <span className="badge loop">{t('plan.loop')}</span>}
                   <SetupButton recipe={node.recipe.id} />
@@ -177,7 +177,8 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
   if (!plan) return <p className="muted">{t('plan.solving')}</p>;
   if (plan.status !== 'Optimal') return <p className="error">{t('plan.failed', { status: plan.status })}</p>;
 
-  const machines = plan.nodes.reduce((sum, n) => sum + n.machines, 0);
+  const machines = plan.nodes.reduce((sum, n) => sum + wholeMachines(n.machines), 0);
+  const busy = plan.nodes.reduce((sum, n) => sum + n.machines, 0);
   const byTier = new Map<number, number>();
   for (const n of plan.nodes) byTier.set(n.config.machineTier, (byTier.get(n.config.machineTier) ?? 0) + n.eut);
 
@@ -185,7 +186,8 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
     <div className={solving ? 'plan solving' : 'plan'}>
       <div className="summary">
         <div><span className="muted">{t('plan.power')}</span><strong>{formatEu(plan.totalEut)} EU/t</strong></div>
-        <div><span className="muted">{t('plan.machineTotal')}</span><strong>{formatNumber(Math.round(machines * 10) / 10)}</strong></div>
+        <div><span className="muted">{t('plan.machineTotal')}</span><strong>{machines}</strong></div>
+        <div><span className="muted">{t('plan.loadTotal')}</span><strong>{formatPercent(machines ? busy / machines : 0)}</strong></div>
         <div><span className="muted">{t('plan.recipes')}</span><strong>{plan.nodes.length}</strong></div>
         <div className="by-tier">
           {[...byTier].filter(([, eut]) => eut >= 0.05).sort((a, b) => a[0] - b[0]).map(([tier, eut]) => (
@@ -226,7 +228,12 @@ export function PlanView({ plan, targets, solving, error, ms, onSelect }: {
                 {plan.nodes.filter((n) => n.machines > EPS).map((node) => (
                   <tr key={node.recipe.id} title={node.recipe.id}>
                     <td><MachineLabel node={node} /> <SetupButton recipe={node.recipe.id} /></td>
-                    <td className="num">{formatNumber(Math.round(node.machines * 100) / 100)} <span className="muted">({Math.ceil(node.machines - 1e-6)})</span></td>
+                    <td className="num">
+                      {wholeMachines(node.machines)}{' '}
+                      {machineLoad(node.machines) < 0.999
+                        ? <span className="idle" title={t('plan.idle', { load: formatPercent(machineLoad(node.machines)) })}>({formatPercent(machineLoad(node.machines))})</span>
+                        : <span className="muted">(100%)</span>}
+                    </td>
                     <td className="num">{formatEu(node.eut)}</td>
                     <td>
                       {[...node.outputs].map(([good, rate], i) => (

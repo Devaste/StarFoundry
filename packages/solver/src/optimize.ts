@@ -11,7 +11,7 @@
 import type { GameData } from '@starfoundry/data';
 import { configOptions, effectiveRecipe, type EffectiveRecipe, type MachineConfig } from './effective.js';
 import type { ProductionProblem, ProductionSolution } from './index.js';
-import { allowedRecipe, buildProblem, IMPORT_KINDS, rawWeight, reachableGoods, readPlan, type Plan, type PlanRequest } from './plan.js';
+import { allowedRecipe, buildProblem, IMPORT_KINDS, reachableGoods, readPlan, type Plan, type PlanRequest } from './plan.js';
 
 export type Solve = (problem: ProductionProblem) => Promise<ProductionSolution>;
 
@@ -20,6 +20,11 @@ export interface PlanScore {
   inputs: number;
   /** items (buckets) per second of byproducts */
   byproducts: number;
+  /** the same split for showing: items per second and mB per second */
+  inputItems: number;
+  inputFluid: number;
+  byproductItems: number;
+  byproductFluid: number;
   /** machines to build: each recipe's count rounded up */
   machines: number;
   /** machines as computed (fractional) */
@@ -78,12 +83,24 @@ const WHOLE = 1e-6;
 const ceilMachines = (m: number) => (m <= WHOLE ? 0 : Math.ceil(m - WHOLE));
 
 export function scorePlan(data: GameData, plan: Plan, free: ReadonlySet<number>): PlanScore {
-  let inputs = 0;
+  let inputItems = 0;
+  let inputFluid = 0;
   for (const kind of IMPORT_KINDS) {
-    for (const [good, rate] of plan.imports[kind]) if (!free.has(good)) inputs += rate * rawWeight(data, good);
+    for (const [good, rate] of plan.imports[kind]) {
+      if (free.has(good)) continue;
+      if (data.isFluid(good)) inputFluid += rate;
+      else inputItems += rate;
+    }
   }
-  let byproducts = 0;
-  for (const [good, rate] of plan.byproducts) byproducts += rate * rawWeight(data, good);
+  let byproductItems = 0;
+  let byproductFluid = 0;
+  for (const [good, rate] of plan.byproducts) {
+    if (data.isFluid(good)) byproductFluid += rate;
+    else byproductItems += rate;
+  }
+  // a bucket weighs like an item, as in rawWeight
+  const inputs = inputItems + inputFluid / 1000;
+  const byproducts = byproductItems + byproductFluid / 1000;
   let machines = 0;
   let exactMachines = 0;
   let eut = 0;
@@ -93,7 +110,7 @@ export function scorePlan(data: GameData, plan: Plan, free: ReadonlySet<number>)
     exactMachines += n.machines;
     eut += n.eut;
   }
-  return { inputs, byproducts, machines, exactMachines, eut };
+  return { inputs, byproducts, inputItems, inputFluid, byproductItems, byproductFluid, machines, exactMachines, eut };
 }
 
 const ORDER: (keyof PlanScore)[] = ['inputs', 'byproducts', 'machines', 'eut'];

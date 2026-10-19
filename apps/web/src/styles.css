@@ -6,6 +6,7 @@
   --panel: color-mix(in srgb, CanvasText 4%, Canvas);
   --accent: #3b82f6;
   --fluid: #0ea5e9;
+  --idle: #d97706;
 }
 body { margin: 0; background: Canvas; color: CanvasText; }
 .app { max-width: 1400px; margin: 0 auto; padding: 0 16px 32px; }
@@ -147,3 +148,4 @@ ul.changes li { margin: 4px 0; }
 ul.changes button.small, .optimize-body button.small { margin-left: 8px; font-size: 0.8rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 4px; background: Canvas; color: CanvasText; cursor: pointer; }
 .optimize-body .delta { color: var(--accent); }
 .optimize-body details.batch { margin-top: 8px; } .optimize-body details.batch summary { cursor: pointer; }
+.idle { color: var(--idle); }
