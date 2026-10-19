@@ -172,6 +172,8 @@
     "useRate": "Use this rate",
     "alternatives": "Other recipes",
     "noAlternatives": "No other recipe makes the line better.",
-    "use": "Use"
+    "use": "Use",
+    "batch": "Whole crafts: feed {{amount}} {{name}} and every recipe with items runs a whole number of times",
+    "runs": "{{n}} runs"
   }
 }

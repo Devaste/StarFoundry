@@ -42,6 +42,14 @@ export interface RateOption {
   machines: number;
 }
 
+export interface WholeBatch {
+  /** the good the batch is counted in (the line's main input from the factory, else its first target) */
+  good: number;
+  amount: number;
+  /** recipe id -> runs in the batch */
+  runs: { recipe: string; runs: number }[];
+}
+
 export interface Alternative {
   /** the item the recipe makes */
   good: number;
@@ -57,6 +65,8 @@ export interface Optimization {
   configs: Record<string, MachineConfig>;
   /** where every machine runs full time, nearest to the current rate first; scale 1 is the current rate */
   rates: RateOption[];
+  /** the smallest batch in which every recipe handling items runs a whole number of times, if there is one */
+  batch?: WholeBatch | undefined;
   /** recipes that would make the line better by the same measure, best first */
   alternatives: Alternative[];
 }
@@ -180,6 +190,7 @@ export async function optimizePlan(data: GameData, request: PlanRequest, solve: 
 
   // 2. perfect ratio: machine counts scale with the targets
   const rates = perfectRates(best.plan.nodes.filter((n) => n.rate > EPS).map((n) => n.machines));
+  const batch = wholeBatch(data, best.plan, request, free);
 
   // 3. other recipes for what the line makes
   const alternatives: Alternative[] = [];
@@ -206,7 +217,7 @@ export async function optimizePlan(data: GameData, request: PlanRequest, solve: 
   }
   alternatives.sort((a, b) => (betterScore(a.score, b.score) ? -1 : betterScore(b.score, a.score) ? 1 : 0));
   onProgress?.(1, 1);
-  return { before: start.score, after: best.score, changes, configs: applied, rates, alternatives };
+  return { before: start.score, after: best.score, changes, configs: applied, rates, batch, alternatives };
 }
 
 /** Takes no more from the factory and leaves no more byproducts (1% slack): no trading one for the other. */
@@ -252,4 +263,41 @@ export function perfectRates(machines: number[]): RateOption[] {
     if (best >= 1 - 1e-6) break;
   }
   return result;
+}
+
+/** batches are searched up to this many units of the reference good */
+const MAX_BATCH = 100000;
+
+/**
+ * The smallest amount of the line's main input (or of its first target) for which every recipe that takes or
+ * makes items runs a whole number of times: with 90 ores a 1-in-7 step leaves 8.57 runs; the batch says to feed
+ * 315. Fluids come in millibuckets, so recipes handling only fluids are left out.
+ */
+export function wholeBatch(data: GameData, plan: Plan, request: PlanRequest, free: ReadonlySet<number>): WholeBatch | undefined {
+  let good: number | undefined;
+  let rate = 0;
+  for (const kind of IMPORT_KINDS) {
+    for (const [g, r] of plan.imports[kind]) {
+      if (!free.has(g) && !data.isFluid(g) && r > rate) {
+        good = g;
+        rate = r;
+      }
+    }
+  }
+  if (good === undefined) {
+    const first = Object.entries(request.targets)[0];
+    if (!first) return undefined;
+    good = Number(first[0]);
+    rate = first[1];
+  }
+  const items = plan.nodes.filter((n) => n.rate > EPS && [...n.recipe.inputs, ...n.recipe.outputs].some((st) => !data.isFluid(st.good)));
+  const perUnit = items.map((n) => n.rate / rate);
+  // targets come back from the URL rounded to 6 digits, so whole is within 1e-4
+  const whole = (x: number) => Math.abs(x - Math.round(x)) <= 1e-4 * Math.max(1, x);
+  for (let amount = 1; amount <= MAX_BATCH; amount++) {
+    if (perUnit.every((q) => whole(q * amount))) {
+      return { good, amount, runs: items.map((n, i) => ({ recipe: n.recipe.id, runs: Math.round(perUnit[i]! * amount) })) };
+    }
+  }
+  return undefined;
 }
