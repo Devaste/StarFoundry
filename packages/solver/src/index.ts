@@ -105,6 +105,14 @@ export async function solveProduction(problem: ProductionProblem): Promise<Produ
   return solution;
 }
 
+/** Solves an LP or MIP in CPLEX LP format; column values by name (see exact.ts). */
+export async function solveMip(lp: string, options: { timeLimit: number }): Promise<{ status: string; columns: Record<string, number> }> {
+  const result = (await loadSolver()).solve(lp, { time_limit: options.timeLimit, mip_rel_gap: 1e-6 });
+  const columns: Record<string, number> = {};
+  for (const [name, column] of Object.entries(result.Columns)) columns[name] = column.Primal ?? 0;
+  return { status: result.Status, columns };
+}
+
 function signed(a: number): string {
   return a < 0 ? `- ${-a}` : `+ ${a}`;
 }
@@ -112,3 +120,4 @@ export * from './effective.js';
 export * from './graph.js';
 export * from './plan.js';
 export * from './optimize.js';
+export * from './exact.js';

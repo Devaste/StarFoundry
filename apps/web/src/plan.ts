@@ -1,5 +1,5 @@
 import type { GameData } from '@starfoundry/data';
-import { buildProblem, defaultRaw, readPlan, type MachineConfig, type Plan, type PlanRequest, type ProductionProblem, type ProductionSolution } from '@starfoundry/solver';
+import { buildProblem, defaultRaw, readPlan, type MachineConfig, type Plan, type PlanRequest, type ProductionProblem, type ProductionSolution, type SolveMip } from '@starfoundry/solver';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { goodKey, parseGoodKey } from './components/GoodLink';
 
@@ -101,31 +101,49 @@ export function planRaw(defaults: number[], state: PlanState): number[] {
   return [...new Set([...defaults.filter((g) => !removed.has(g)), ...state.rawAdd])];
 }
 
-type Reply = { id: number; solution?: ProductionSolution; error?: string };
+type MipResult = Awaited<ReturnType<SolveMip>>;
+type Reply = { id: number; solution?: ProductionSolution; mip?: MipResult; error?: string };
 
-let worker: Worker | undefined;
+// LPs and the slow integer programs get a worker each, so a long search never holds up the plan
+const workers = new Map<'lp' | 'mip', Worker>();
 let lastId = 0;
-const pending = new Map<number, { resolve: (s: ProductionSolution) => void; reject: (e: Error) => void }>();
+const pending = new Map<number, { resolve: (r: Reply) => void; reject: (e: Error) => void }>();
 
-/** Solves one LP in the solver worker (one worker for the whole page). */
-export function solveInWorker(problem: ProductionProblem): Promise<ProductionSolution> {
+/** Posts one job to a solver worker. */
+function post(kind: 'lp' | 'mip', message: object): Promise<Reply> {
+  let worker = workers.get(kind);
   if (!worker) {
     worker = new Worker(new URL('./solver.worker.ts', import.meta.url), { type: 'module' });
+    workers.set(kind, worker);
     worker.onmessage = (e: MessageEvent<Reply>) => {
       const job = pending.get(e.data.id);
       if (!job) return;
       pending.delete(e.data.id);
-      if (e.data.error || !e.data.solution) job.reject(new Error(e.data.error ?? 'no solution'));
-      else job.resolve(e.data.solution);
+      if (e.data.error) job.reject(new Error(e.data.error));
+      else job.resolve(e.data);
     };
   }
   const id = ++lastId;
-  const { recipes, targets, raw } = problem; // the solver needs only the LP itself
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    worker!.postMessage({ id, problem: { recipes, targets, raw } });
+    worker.postMessage({ id, ...message });
   });
 }
+
+/** Solves one LP in the solver worker. */
+export async function solveInWorker(problem: ProductionProblem): Promise<ProductionSolution> {
+  const { recipes, targets, raw } = problem; // the solver needs only the LP itself
+  const reply = await post('lp', { problem: { recipes, targets, raw } });
+  if (!reply.solution) throw new Error('no solution');
+  return reply.solution;
+}
+
+/** Solves an integer program (exact line) in the solver worker. */
+export const solveMipInWorker: SolveMip = async (lp, options) => {
+  const reply = await post('mip', { lp, options });
+  if (!reply.mip) throw new Error('no solution');
+  return reply.mip;
+};
 
 export function useDefaultRaw(data: GameData) {
   return useMemo(() => defaultRaw(data), [data]);

@@ -1,6 +1,6 @@
 import { GameData, type RawBundle } from '@starfoundry/data';
 import { describe, expect, it } from 'vitest';
-import { optimizePlan, perfectRates, solveProduction } from './index.js';
+import { exactLine, optimizePlan, perfectRates, solveMip, solveProduction } from './index.js';
 
 // goods: 0 ingot, 1 plate; one bending recipe at LV, benders at LV and MV
 const bundle: RawBundle = {
@@ -59,5 +59,17 @@ describe('perfectRates', () => {
     const rates = perfectRates([0.5, 1.5]);
     expect(rates[0]).toMatchObject({ scale: 1, machines: 3 });
     expect(rates.at(-1)).toMatchObject({ scale: 2, utilization: 1, machines: 4 });
+  });
+});
+
+describe('exactLine', () => {
+  it('grows the line until every machine works full time', async () => {
+    // 0.3 plate/s: one LV bender (0.5 runs/s) is the smallest full-time line
+    const request = { targets: { 1: 0.3 }, settings: { maxTier: 2, raw: [0], supplied: [0], manual: true, locks: { 1: 'bend' } } };
+    const o = await optimizePlan(data, request, solveProduction);
+    const { line } = await exactLine(data, request, o.plan, o.configs, solveMip, 1);
+    expect(line?.recipes.map((r) => [r.machines, r.setup.machineTier])).toEqual([[1, 1]]);
+    expect(line?.targets.get(1)).toBeCloseTo(0.5);
+    expect(line?.recipes[0]!.busy).toBeCloseTo(1);
   });
 });

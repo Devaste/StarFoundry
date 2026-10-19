@@ -1,14 +1,17 @@
 // All solving runs off the main thread (SPEC §10.2).
-import { loadSolver, solveProduction, type ProductionProblem } from '@starfoundry/solver';
+import { loadSolver, solveMip, solveProduction, type ProductionProblem } from '@starfoundry/solver';
 import wasmUrl from 'highs/runtime?url';
 
 const ready = loadSolver({ locateFile: () => wasmUrl });
 
-self.onmessage = async (event: MessageEvent<{ id: number; problem: ProductionProblem }>) => {
+type Job = { id: number; problem?: ProductionProblem; lp?: string; options?: { timeLimit: number } };
+
+self.onmessage = async (event: MessageEvent<Job>) => {
   await ready;
-  const { id, problem } = event.data;
+  const { id, problem, lp, options } = event.data;
   try {
-    self.postMessage({ id, solution: await solveProduction(problem) });
+    if (lp !== undefined) self.postMessage({ id, mip: await solveMip(lp, options ?? { timeLimit: 20 }) });
+    else self.postMessage({ id, solution: await solveProduction(problem!) });
   } catch (e) {
     self.postMessage({ id, error: String(e) });
   }

@@ -177,6 +177,17 @@
     "use": "Use",
     "batch": "Whole crafts: feed {{amount}} {{name}} and every recipe with items runs a whole number of times",
     "runs": "{{n}} runs",
-    "load": "Machines busy"
+    "load": "Machines busy",
+    "exact": "Full-time line",
+    "exactHelp": "Whole machines that all work the whole time: every item made inside the line is used up as fast as it is made, so nothing backs up and no machine waits for its inputs. Ticks are whole and chances are fractions, so a line that is exactly full usually needs a much bigger line; a little waiting (99%) makes it far smaller. The search takes up to half a minute.",
+    "busyAt": "Every machine busy at least",
+    "find": "Find the line",
+    "searching": "Searching (up to {{s}} s)…",
+    "exactFound": "Every machine works at least {{busy}} of the time at {{scale}}× your targets: {{machines}} machines, {{eu}} EU/t.",
+    "notProven": "(best found in the time limit, a smaller one may exist)",
+    "makes": "Makes:",
+    "exactNone": "No line where every machine is busy {{busy}} of the time was found within 256 machines per recipe and {{s}} s.",
+    "exactLimit": "{{name}} alone needs the line at least {{scale}}× bigger: even one machine on its slowest setup works faster than the line feeds it.",
+    "useLine": "Use this line"
   }
 }

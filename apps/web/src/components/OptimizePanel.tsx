@@ -6,6 +6,7 @@ import { formatEu, formatNumber, formatPercent, tierName } from '../format';
 import { planRequest, solveInWorker, useDefaultRaw } from '../plan';
 import { lockRecipe, usePlanActions } from '../planActions';
 import { formatRate, useUnit } from '../units';
+import { ExactLine } from './ExactLine';
 
 /** The current rate, the next few closer to full time and the best one. */
 function shownRates(rates: RateOption[]): RateOption[] {
@@ -145,6 +146,8 @@ export function OptimizePanel({ onClose }: { onClose: () => void }) {
                 </ul>
               </details>
             )}
+
+            <ExactLine result={result} />
 
             <h4>{t('optimize.alternatives')}</h4>
             {result.alternatives.length === 0 ? (
